@@ -88,6 +88,7 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
         includeReset: true,
         useCssVariables: true,
       },
+      true,
       true
     );
   }, [previewTemplate]);

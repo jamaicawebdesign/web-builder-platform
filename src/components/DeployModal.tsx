@@ -21,7 +21,11 @@ import {
   LeadSubmission,
   SiteProject,
 } from '../types/builder';
-import { generateCleanHtml } from '../utils/codeGenerator';
+import {
+  generateAllSitePagesHtml,
+  generateCleanHtml,
+} from '../utils/codeGenerator';
+import { ensureProjectPages } from '../utils/sitePages';
 
 interface DeployModalProps {
   open: boolean;
@@ -178,16 +182,22 @@ export const DeployModal: React.FC<DeployModalProps> = ({
           }
         : project;
 
-      const standaloneHtml = generateCleanHtml(
+      const deployExportOpts: ExportOptions = {
+        ...exportOptions,
+        minify: false,
+        formEndpoint: `/api/sites/${targetSlug}/submit`,
+        trackEndpoint: `/api/sites/${targetSlug}/event`,
+      };
+
+      const compiledPages = generateAllSitePagesHtml(
         projectForPublish,
-        {
-          ...exportOptions,
-          minify: false,
-          formEndpoint: `/api/sites/${targetSlug}/submit`,
-          trackEndpoint: `/api/sites/${targetSlug}/event`,
-        },
+        deployExportOpts,
         true
       );
+      const standaloneHtml =
+        compiledPages.find((p) => p.path === '/')?.html ||
+        compiledPages[0]?.html ||
+        generateCleanHtml(projectForPublish, deployExportOpts, true);
 
       const res = await fetch('/api/deploy', {
         method: 'POST',
@@ -199,7 +209,16 @@ export const DeployModal: React.FC<DeployModalProps> = ({
           name: project.name,
           description: project.description,
           html: standaloneHtml,
+          pages: compiledPages.map((pg) => ({
+            path: pg.path,
+            name: pg.name,
+            title: pg.title,
+            description: pg.description,
+            html: pg.html,
+            blockCount: pg.blockCount,
+          })),
           blockCount: project.blocks.length,
+          ...(project.automations ? { automations: project.automations } : {}),
           ...(normalizedDomain ? { customDomain: normalizedDomain } : {}),
         }),
       });
@@ -360,9 +379,35 @@ export const DeployModal: React.FC<DeployModalProps> = ({
   };
 
   const exportLeadsCsv = () => {
-    const header = ['Submitted At', 'Site Slug', 'Name', 'Email', 'Message'];
+    const header = [
+      'Submitted At',
+      'Site Slug',
+      'Name',
+      'Email',
+      'Phone',
+      'Company',
+      'Status',
+      'Consultation Slot',
+      'Custom Fields',
+      'Message',
+    ];
     const rows = leads.map((l) =>
-      [l.submittedAt, l.siteSlug, l.name, l.email, l.message]
+      [
+        l.submittedAt,
+        l.siteSlug,
+        l.name,
+        l.email,
+        l.phone || '',
+        l.company || '',
+        l.status || 'new',
+        l.bookingSlot ? `${l.bookingSlot.date} ${l.bookingSlot.time}` : '',
+        l.customData
+          ? Object.entries(l.customData)
+              .map(([k, v]) => `${k}: ${String(v)}`)
+              .join(' | ')
+          : '',
+        l.message,
+      ]
         .map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`)
         .join(',')
     );
@@ -525,6 +570,22 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                   </div>
                 )}
 
+                <div className="px-3 py-2 rounded-lg border border-[#DAD4C6] bg-[#FAF9F5] text-xs text-black flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    Publishing{' '}
+                    <strong>{ensureProjectPages(project).pages.length}</strong>{' '}
+                    page{ensureProjectPages(project).pages.length === 1 ? '' : 's'}:{' '}
+                    <span className="font-mono">
+                      {ensureProjectPages(project)
+                        .pages.map((p) => p.path)
+                        .join(', ')}
+                    </span>
+                  </span>
+                  <span className="font-mono font-semibold text-[#047857]">
+                    + sitemap.xml · robots.txt
+                  </span>
+                </div>
+
                 <button
                   type="submit"
                   disabled={isDeploying || project.blocks.length === 0}
@@ -533,7 +594,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                   <Globe className="w-4 h-4" />
                   <span>
                     {isDeploying
-                      ? 'Publishing Standalone Site...'
+                      ? 'Publishing Multi-Page Site...'
                       : 'Deploy Live Now'}
                   </span>
                 </button>
@@ -543,7 +604,8 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                 <div className="p-3.5 rounded-lg border border-emerald-300 bg-emerald-50/70 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-emerald-900">
-                      Site Published Live
+                      Site Published Live ({latestResult.pagesCount || 1}{' '}
+                      {(latestResult.pagesCount || 1) === 1 ? 'page' : 'pages'})
                     </span>
                     <span className="text-[13px] text-emerald-900 tabular-nums">
                       {new Date(latestResult.deployedAt).toLocaleTimeString()}
@@ -576,6 +638,39 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                     >
                       <span>Open</span>
                       <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-mono text-black">
+                    {(latestResult.pagePaths || ['/']).map((pgPath) => (
+                      <a
+                        key={pgPath}
+                        href={
+                          pgPath === '/'
+                            ? latestResult.url
+                            : `${latestResult.url}${pgPath}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 rounded border border-emerald-300 bg-white hover:bg-emerald-50 text-black"
+                      >
+                        {pgPath}
+                      </a>
+                    ))}
+                    <a
+                      href={`${latestResult.url}/sitemap.xml`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-0.5 rounded border border-emerald-300 bg-white hover:bg-emerald-50 text-[#047857] font-semibold"
+                    >
+                      sitemap.xml
+                    </a>
+                    <a
+                      href={`${latestResult.url}/robots.txt`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-0.5 rounded border border-emerald-300 bg-white hover:bg-emerald-50 text-[#047857] font-semibold"
+                    >
+                      robots.txt
                     </a>
                   </div>
                   {latestResult.customDomain && (
@@ -627,9 +722,13 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                           <div className="text-sm font-semibold text-black truncate">
                             {d.name}
                           </div>
-                          <div className="text-[13px] text-black truncate">
+                          <div className="text-[13px] text-black truncate tabular-nums">
                             {d.clientName || 'Studio Client'} ·{' '}
-                            <span className="font-mono">{d.url}</span>
+                            <span>
+                              {d.pagesCount || 1}{' '}
+                              {(d.pagesCount || 1) === 1 ? 'page' : 'pages'}
+                            </span>{' '}
+                            · <span className="font-mono">{d.url}</span>
                             {d.customDomain && (
                               <>
                                 {' '}
@@ -659,6 +758,15 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                           >
                             {d.customDomain ? 'Manage Domain' : 'Connect Domain'}
                           </button>
+                          <a
+                            href={`${d.url}/sitemap.xml`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open auto-generated sitemap.xml"
+                            className="px-2 py-1 rounded border border-[#DAD4C6] bg-white hover:bg-[#EAE6DC]/60 text-[12px] font-mono font-medium text-black"
+                          >
+                            sitemap
+                          </a>
                           <a
                             href={d.url}
                             target="_blank"
@@ -975,6 +1083,11 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                           <span className="font-normal text-black">
                             &lt;{lead.email}&gt;
                           </span>
+                          {(lead.company || lead.phone) && (
+                            <span className="block text-xs font-normal text-black/80">
+                              {[lead.company, lead.phone].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-[13px] font-mono text-black">
@@ -990,9 +1103,25 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                           </button>
                         </div>
                       </div>
+                      {lead.bookingSlot && (
+                        <div className="text-xs font-semibold text-[#1D4ED8] tabular-nums">
+                          Consultation: {lead.bookingSlot.date} at {lead.bookingSlot.time}
+                          {lead.bookingSlot.duration ? ` (${lead.bookingSlot.duration})` : ''}
+                        </div>
+                      )}
                       <p className="text-sm text-black leading-relaxed">
                         {lead.message}
                       </p>
+                      {lead.customData && Object.keys(lead.customData).length > 0 && (
+                        <div className="text-xs text-black/80 space-y-0.5">
+                          {Object.entries(lead.customData).map(([k, v]) => (
+                            <div key={k}>
+                              <span className="font-semibold">{k}:</span>{' '}
+                              <span>{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="text-[13px] text-black tabular-nums">
                         {new Date(lead.submittedAt).toLocaleString()}
                       </div>

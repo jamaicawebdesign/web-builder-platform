@@ -55,9 +55,14 @@
 }
 
 /* Custom thin scrollbars for studio sidebars */
+.studio-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(19, 21, 26, 0.24) transparent;
+}
+
 .studio-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .studio-scroll::-webkit-scrollbar-track {
@@ -65,12 +70,93 @@
 }
 
 .studio-scroll::-webkit-scrollbar-thumb {
-  background: rgba(19, 21, 26, 0.16);
+  background: rgba(19, 21, 26, 0.2);
   border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 .studio-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(19, 21, 26, 0.28);
+  background: rgba(19, 21, 26, 0.36);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Prominent full-height scrollbar for scrolling developed websites */
+.canvas-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #7D7667 #E2DDD1;
+}
+
+.canvas-scroll::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+
+.canvas-scroll::-webkit-scrollbar-track {
+  background: #E2DDD1;
+  border-left: 1px solid #CFC8B8;
+}
+
+.canvas-scroll::-webkit-scrollbar-thumb {
+  background: #7D7667;
+  border-radius: 9999px;
+  border: 2px solid #E2DDD1;
+}
+
+.canvas-scroll::-webkit-scrollbar-thumb:hover {
+  background: #4F493E;
+}
+
+.canvas-scroll::-webkit-scrollbar-thumb:active {
+  background: #13151A;
+}
+
+.canvas-scroll::-webkit-scrollbar-corner {
+  background: #E2DDD1;
+}
+
+/* Interactive horizontal page scroll scrubber */
+.af-scroll-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: #E2DDD1;
+  cursor: pointer;
+}
+
+.af-scroll-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #1D4ED8;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.af-scroll-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  background: #163B9E;
+}
+
+.af-scroll-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+.af-scroll-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #1D4ED8;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: grab;
 }
 
 /* Template Canvas Motion & Micro-interactions */

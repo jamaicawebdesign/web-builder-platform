@@ -65,6 +65,27 @@ export const STUDIO_IMAGES: StudioImageAsset[] = [
     url: '/src/assets/images/hero_fellowship_workshop_1795062577617.jpg',
     alt: 'Designers and engineers collaborating around birch studio critique tables',
   },
+  {
+    id: 'portrait-architect',
+    label: 'Partner Portrait — Linnea',
+    category: 'Portraits',
+    url: '/src/assets/images/team_lead_architect_1795148542554.jpg',
+    alt: 'Managing partner Linnea Halvorsen in sunlit limestone architecture studio',
+  },
+  {
+    id: 'portrait-engineering',
+    label: 'Director Portrait — Henrik',
+    category: 'Portraits',
+    url: '/src/assets/images/team_engineering_director_1795148543928.jpg',
+    alt: 'Structural director Kenji Takahashi in studio daylight',
+  },
+  {
+    id: 'portrait-strategy',
+    label: 'Design Lead Portrait — Mei',
+    category: 'Portraits',
+    url: '/src/assets/images/team_strategy_partner_1795148543761.jpg',
+    alt: 'Principal design strategist Mei Chen at wooden studio worktable',
+  },
 ];
 
 export const DISPLAY_FONTS = [
@@ -221,6 +242,12 @@ export const ELEMENT_PALETTE: PaletteElementMeta[] = [
     category: 'Content',
   },
   {
+    type: 'logocloud',
+    title: 'Logo Cloud / Trust Bar',
+    summary: 'Monochrome partner & client trust strip',
+    category: 'Content',
+  },
+  {
     type: 'features',
     title: 'Feature Grid',
     summary: 'Structured 2 or 3 column capability cards',
@@ -233,9 +260,33 @@ export const ELEMENT_PALETTE: PaletteElementMeta[] = [
     category: 'Content',
   },
   {
+    type: 'portfolio',
+    title: 'Portfolio / Case Studies',
+    summary: 'Filterable project cards with interactive detail modal',
+    category: 'Content',
+  },
+  {
+    type: 'video',
+    title: 'Video / Demo Showcase',
+    summary: 'YouTube, Vimeo, or MP4 embed with custom poster frame',
+    category: 'Content',
+  },
+  {
+    type: 'team',
+    title: 'Team / Leadership Grid',
+    summary: 'Editorial portraits, titles, bios & social links',
+    category: 'Content',
+  },
+  {
     type: 'pricing',
     title: 'Pricing Table',
     summary: 'Audience-named tiers with clear feature limits',
+    category: 'Conversion',
+  },
+  {
+    type: 'calculator',
+    title: 'ROI / Pricing Calculator',
+    summary: 'Interactive sliders for team size & monthly savings',
     category: 'Conversion',
   },
   {
@@ -523,6 +574,195 @@ export function createDefaultBlock(type: BlockType): SiteBlock {
           email: 'studio@nordicpractice.example',
           location: 'Refshalevej 163A, 1432 Copenhagen',
           submitLabel: 'Send Project Brief',
+        },
+      };
+    case 'logocloud':
+      return {
+        id,
+        type: 'logocloud',
+        label: 'Logo Cloud',
+        backgroundVariant: 'surface',
+        paddingY: 'compact',
+        props: {
+          heading: 'Trusted by architecture, product, and logistics teams worldwide',
+          caption: 'Verified multi-year enterprise deployments across 14 countries',
+          layout: 'row',
+          items: [
+            { name: 'Krona Maritime', sector: 'Freight' },
+            { name: 'Vestergaard Timber', sector: 'Construction' },
+            { name: 'NordGrid Energy', sector: 'Infrastructure' },
+            { name: 'Helvetia Labs', sector: 'Biotech' },
+            { name: 'Solberg Mobility', sector: 'Transit' },
+            { name: 'Aurelia Hospitality', sector: 'Venues' },
+          ],
+        },
+      };
+    case 'portfolio':
+      return {
+        id,
+        type: 'portfolio',
+        label: 'Portfolio Grid',
+        backgroundVariant: 'canvas',
+        paddingY: 'normal',
+        props: {
+          eyebrow: 'Selected Case Studies',
+          heading: 'Measured client outcomes across civic and commercial work.',
+          intro:
+            'Filter projects by discipline or open any case study to inspect scope, constraints, and verified post-launch metrics.',
+          columns: 3,
+          items: [
+            {
+              title: 'Harbor Foundry Headquarters',
+              category: 'Adaptive Reuse',
+              client: 'Krona Maritime',
+              metric: '38% Less Steel · 4,200 sqm',
+              summary:
+                'Transformed a 1920s brick shipping shed into a daylight timber headquarters three weeks ahead of tender schedule.',
+              challenge:
+                'Existing uninsulated warehouse masonry suffered high winter thermal loss and limited floorplate daylight penetration.',
+              outcome:
+                'Inserted freestanding CLT mezzanine volumes with triple-glazed clerestories, cutting annual heating energy by 54%.',
+              imageUrl: STUDIO_IMAGES[0].url,
+              imageAlt: STUDIO_IMAGES[0].alt,
+              linkLabel: 'Request Similar Scope',
+              linkHref: '#contact',
+            },
+            {
+              title: 'Anodized Reference Monitor Lab',
+              category: 'Product Systems',
+              client: 'Solberg Acoustics',
+              metric: '+142% Pre-Order Conversion',
+              summary:
+                'Industrial enclosure architecture and retail launch experience for a CNC-milled studio reference interface.',
+              challenge:
+                'Prospective engineers struggled to compare acoustic tolerances and I/O specifications on technical datasheets alone.',
+              outcome:
+                'Paired interactive cutaway demonstrations with transparent calibration reports, doubling direct studio orders in 60 days.',
+              imageUrl: STUDIO_IMAGES[1].url,
+              imageAlt: STUDIO_IMAGES[1].alt,
+              linkLabel: 'View Case Brief',
+              linkHref: '#contact',
+            },
+            {
+              title: 'Conservatory Cultural Pavilion',
+              category: 'Civic Venues',
+              client: 'Aurelia Foundation',
+              metric: '94% Year-Round Bookings',
+              summary:
+                'Low-iron glass and travertine assembly engineered for acoustic intimacy across 240-seat seasonal recitals.',
+              challenge:
+                'All-glass pavilions traditionally suffer severe reverberation and summer solar heat gain.',
+              outcome:
+                'Integrated micro-perforated limestone baffles and fritted roof glazing for natural ventilation with zero mechanical hum.',
+              imageUrl: STUDIO_IMAGES[3].url,
+              imageAlt: STUDIO_IMAGES[3].alt,
+              linkLabel: 'Download Dossier',
+              linkHref: '#contact',
+            },
+          ],
+        },
+      };
+    case 'video':
+      return {
+        id,
+        type: 'video',
+        label: 'Video Demo',
+        backgroundVariant: 'contrast',
+        paddingY: 'normal',
+        props: {
+          eyebrow: 'Interactive Walkthrough',
+          heading: 'See how our workflow takes a brief from schematic to handover.',
+          description:
+            'Watch a concise two-minute studio walkthrough covering daylight simulation, mass-timber joinery tolerances, and client cost dashboards.',
+          videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+          posterUrl: STUDIO_IMAGES[5].url,
+          posterAlt: 'Interactive studio workflow walkthrough poster frame',
+          durationLabel: '2:14 Walkthrough',
+          highlights: [
+            'Live solar and acoustic simulation before committing capital',
+            'Automated BOM cost sync across structural and fixture selections',
+            'Zero-handoff collaboration between partners and contractors',
+          ],
+          ctaLabel: 'Book Live Demo',
+          ctaHref: '#contact',
+        },
+      };
+    case 'team':
+      return {
+        id,
+        type: 'team',
+        label: 'Leadership Team',
+        backgroundVariant: 'surface',
+        paddingY: 'normal',
+        props: {
+          eyebrow: 'Studio Leadership',
+          heading: 'Principals leading every engagement from brief to delivery.',
+          intro:
+            'Clients work directly with senior architects, structural engineers, and product strategists—never handed off to junior account tiers.',
+          columns: 3,
+          members: [
+            {
+              name: 'Linnea Halvorsen',
+              role: 'Managing Partner · Architecture',
+              bio: 'Fifteen years leading civic timber projects across Copenhagen and Zurich with a focus on adaptive reuse.',
+              imageUrl: '/src/assets/images/team_lead_architect_1795148542554.jpg',
+              imageAlt: 'Portrait of Managing Partner Linnea Halvorsen',
+              linkedinUrl: 'https://linkedin.com',
+              xUrl: 'https://x.com',
+              websiteUrl: 'https://example.com',
+            },
+            {
+              name: 'Kenji Takahashi',
+              role: 'Director · Structural Engineering',
+              bio: 'Specialist in hybrid steel-timber spans, acoustic commissioning, and low-carbon modular assembly.',
+              imageUrl: '/src/assets/images/team_engineering_director_1795148543928.jpg',
+              imageAlt: 'Portrait of Structural Engineering Director Kenji Takahashi',
+              linkedinUrl: 'https://linkedin.com',
+              xUrl: 'https://x.com',
+            },
+            {
+              name: 'Mei Chen',
+              role: 'Principal · Strategy & Research',
+              bio: 'Leads post-occupancy spatial telemetry, workplace feasibility studies, and capital planning benchmarks.',
+              imageUrl: '/src/assets/images/team_strategy_partner_1795148543761.jpg',
+              imageAlt: 'Portrait of Principal Strategist Mei Chen',
+              linkedinUrl: 'https://linkedin.com',
+              websiteUrl: 'https://example.com',
+            },
+          ],
+        },
+      };
+    case 'calculator':
+      return {
+        id,
+        type: 'calculator',
+        label: 'ROI Calculator',
+        backgroundVariant: 'canvas',
+        paddingY: 'normal',
+        props: {
+          eyebrow: 'ROI & Scope Estimator',
+          heading: 'Calculate your monthly savings and payback timeline.',
+          intro:
+            'Adjust team seats and weekly workflow hours saved to model net financial impact before starting a rollout.',
+          currencySymbol: '$',
+          primaryInputLabel: 'Active Team Seats',
+          primaryMin: 5,
+          primaryMax: 250,
+          primaryStep: 5,
+          primaryDefault: 25,
+          primaryUnitLabel: 'seats',
+          secondaryInputLabel: 'Hours Saved per Seat / Month',
+          secondaryMin: 2,
+          secondaryMax: 30,
+          secondaryStep: 1,
+          secondaryDefault: 8,
+          secondaryUnitLabel: 'hrs/mo',
+          hourlyRate: 75,
+          monthlyPlatformCostPerPrimary: 28,
+          baseMonthlyFee: 199,
+          roiHeadlineLabel: 'Estimated Net Monthly Value',
+          ctaLabel: 'Lock In Custom Quote',
+          ctaHref: '#contact',
         },
       };
     case 'footer':

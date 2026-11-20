@@ -1,0 +1,7 @@
+{
+  "smoke-test-1795150482996": {
+    "webhookUrl": "",
+    "webhookFormat": "json",
+    "notifyEmail": "ops@example.com"
+  }
+}

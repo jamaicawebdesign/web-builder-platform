@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import {
   BarChart3,
   BookOpen,
+  Building2,
+  Calculator,
   CreditCard,
   Eye,
+  FolderKanban,
   GripVertical,
   HelpCircle,
   LayoutGrid,
@@ -14,9 +17,11 @@ import {
   Navigation,
   Palette,
   PanelBottom,
+  PlaySquare,
   Plus,
   Search,
   Sparkles,
+  Users,
   Wand2,
   X,
 } from 'lucide-react';
@@ -75,14 +80,24 @@ function getBlockIcon(type: BlockType) {
       return <Navigation className="w-4 h-4" />;
     case 'hero':
       return <LayoutTemplate className="w-4 h-4" />;
+    case 'logocloud':
+      return <Building2 className="w-4 h-4" />;
     case 'stats':
       return <BarChart3 className="w-4 h-4" />;
     case 'features':
       return <LayoutGrid className="w-4 h-4" />;
     case 'showcase':
       return <BookOpen className="w-4 h-4" />;
+    case 'portfolio':
+      return <FolderKanban className="w-4 h-4" />;
+    case 'video':
+      return <PlaySquare className="w-4 h-4" />;
+    case 'team':
+      return <Users className="w-4 h-4" />;
     case 'pricing':
       return <CreditCard className="w-4 h-4" />;
+    case 'calculator':
+      return <Calculator className="w-4 h-4" />;
     case 'testimonial':
       return <MessageSquareQuote className="w-4 h-4" />;
     case 'faq':
@@ -379,6 +394,46 @@ export const LeftRail: React.FC<LeftRailProps> = ({
               </p>
             </div>
 
+            {/* Live Typography & Palette Specimen */}
+            <div
+              className="p-3.5 rounded-lg border flex items-center justify-between gap-3"
+              style={{
+                backgroundColor: project.theme.backgroundColor,
+                borderColor: project.theme.borderColor,
+              }}
+            >
+              <div className="min-w-0">
+                <div
+                  className="text-base font-bold truncate"
+                  style={{
+                    fontFamily: `"${project.theme.displayFont}", system-ui, sans-serif`,
+                    color: project.theme.textColor,
+                  }}
+                >
+                  {project.theme.displayFont}
+                </div>
+                <div
+                  className="text-xs truncate mt-0.5"
+                  style={{
+                    fontFamily: `"${project.theme.bodyFont}", system-ui, sans-serif`,
+                    color: project.theme.mutedTextColor,
+                  }}
+                >
+                  Body in {project.theme.bodyFont}
+                </div>
+              </div>
+              <span
+                className="px-2.5 py-1 text-xs font-semibold shrink-0"
+                style={{
+                  backgroundColor: project.theme.primaryColor,
+                  color: project.theme.accentTextColor,
+                  borderRadius: project.theme.radius,
+                }}
+              >
+                Action
+              </span>
+            </div>
+
             {/* One-Click Brand Palette Presets */}
             <div className="space-y-2.5">
               <div className="text-sm font-semibold text-black">
@@ -568,7 +623,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3 pt-4 border-t border-slate-200">
+            <div className="space-y-3 pt-4 border-t border-[#DAD4C6]">
               <div className="text-sm font-semibold text-black">
                 Client &amp; SEO Metadata
               </div>
@@ -583,7 +638,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     onUpdateProjectMeta({ clientName: e.target.value })
                   }
                   placeholder="Acme Architecture"
-                  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white"
+                  className="w-full rounded-lg border border-[#DAD4C6] px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white"
                 />
               </div>
               <div>
@@ -599,7 +654,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     })
                   }
                   placeholder={project.name}
-                  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white"
+                  className="w-full rounded-lg border border-[#DAD4C6] px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white"
                 />
               </div>
               <div>
@@ -615,7 +670,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     })
                   }
                   placeholder={project.description}
-                  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white resize-none"
+                  className="w-full rounded-lg border border-[#DAD4C6] px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 bg-white resize-none"
                 />
               </div>
               <div>
@@ -631,7 +686,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                     })
                   }
                   placeholder="https://clientdomain.com"
-                  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 font-mono bg-white"
+                  className="w-full rounded-lg border border-[#DAD4C6] px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 font-mono bg-white"
                 />
               </div>
             </div>
@@ -770,14 +825,14 @@ export const LeftRail: React.FC<LeftRailProps> = ({
             </div>
 
             {savedProjects.length > 0 && (
-              <div className="space-y-2.5 pt-3 border-t border-slate-200">
+              <div className="space-y-2.5 pt-3 border-t border-[#DAD4C6]">
                 <div className="text-sm font-semibold text-black">
                   Saved Client Workspaces
                 </div>
                 {savedProjects.map((saved) => (
                   <div
                     key={saved.id}
-                    className="p-2.5 rounded-lg border border-slate-200 bg-white flex items-start justify-between gap-2"
+                    className="p-2.5 rounded-lg border border-[#DAD4C6] bg-white flex items-start justify-between gap-2"
                   >
                     <button
                       type="button"

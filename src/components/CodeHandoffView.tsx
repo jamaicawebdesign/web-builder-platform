@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Copy, Download, FileCode2 } from 'lucide-react';
+import { Check, Copy, Download, FileCode2, Globe } from 'lucide-react';
 import { ExportOptions, SiteProject } from '../types/builder';
-import { generateCleanCss, generateCleanHtml } from '../utils/codeGenerator';
+import {
+  generateAllSitePagesHtml,
+  generateCleanCss,
+  generateRobotsTxt,
+  generateSitemapXml,
+} from '../utils/codeGenerator';
 
 interface CodeHandoffViewProps {
   project: SiteProject;
@@ -9,7 +14,7 @@ interface CodeHandoffViewProps {
   onChangeOptions: (patch: Partial<ExportOptions>) => void;
 }
 
-type CodeTab = 'html' | 'css' | 'bundle';
+type CodeTab = 'html' | 'css' | 'bundle' | 'sitemap' | 'robots';
 
 export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
   project,
@@ -17,23 +22,46 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
   onChangeOptions,
 }) => {
   const [activeTab, setActiveTab] = useState<CodeTab>('html');
+  const [selectedPageId, setSelectedPageId] = useState<string>(
+    () => project.activePageId || project.pages?.[0]?.id || 'page_home'
+  );
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const htmlCode = useMemo(
-    () => generateCleanHtml(project, options, false),
+  const compiledPages = useMemo(
+    () => generateAllSitePagesHtml(project, options, false),
     [project, options]
   );
+
+  const compiledBundlePages = useMemo(
+    () => generateAllSitePagesHtml(project, options, true),
+    [project, options]
+  );
+
+  const activeCompiledPage =
+    compiledPages.find((p) => p.id === selectedPageId) || compiledPages[0];
+  const activeBundlePage =
+    compiledBundlePages.find((p) => p.id === selectedPageId) ||
+    compiledBundlePages[0];
+
+  const htmlCode = activeCompiledPage?.html || '';
   const cssCode = useMemo(
     () => generateCleanCss(project.theme, options),
     [project.theme, options]
   );
-  const bundleCode = useMemo(
-    () => generateCleanHtml(project, options, true),
-    [project, options]
-  );
+  const bundleCode = activeBundlePage?.html || '';
+  const sitemapXml = useMemo(() => generateSitemapXml(project), [project]);
+  const robotsTxt = useMemo(() => generateRobotsTxt(project), [project]);
 
   const activeCode =
-    activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : bundleCode;
+    activeTab === 'html'
+      ? htmlCode
+      : activeTab === 'css'
+        ? cssCode
+        : activeTab === 'bundle'
+          ? bundleCode
+          : activeTab === 'sitemap'
+            ? sitemapXml
+            : robotsTxt;
 
   const lines = useMemo(() => activeCode.split('\n'), [activeCode]);
 
@@ -62,15 +90,43 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
   return (
     <div className="flex-1 flex h-full overflow-hidden bg-[#F4F2EC]">
       {/* Left Handoff Configuration Panel */}
-      <aside className="w-[316px] shrink-0 bg-white border-r border-[#DAD4C6] p-5 flex flex-col justify-between overflow-y-auto studio-scroll">
-        <div className="space-y-6">
+      <aside className="w-[324px] shrink-0 bg-white border-r border-[#DAD4C6] p-5 flex flex-col justify-between overflow-y-auto studio-scroll">
+        <div className="space-y-5">
           <div>
             <h2 className="text-base font-semibold text-black">
               Developer Handoff
             </h2>
             <p className="text-sm text-black mt-1 leading-relaxed">
-              Semantic HTML5 and zero-dependency CSS3 compiled directly from your active canvas and tokens.
+              Multi-page semantic HTML5, zero-dependency CSS3, and auto-generated SEO sitemaps compiled directly from your site.
             </p>
+          </div>
+
+          {/* Page Switcher for Code Export */}
+          <div className="space-y-2 pt-3 border-t border-[#DAD4C6]">
+            <label
+              htmlFor="code-page-select"
+              className="flex items-center justify-between text-xs font-semibold text-black"
+            >
+              <span>Inspect Page Route</span>
+              <span className="font-mono">{compiledPages.length} pages</span>
+            </label>
+            <select
+              id="code-page-select"
+              value={activeCompiledPage?.id || ''}
+              onChange={(e) => {
+                setSelectedPageId(e.target.value);
+                if (activeTab === 'sitemap' || activeTab === 'robots') {
+                  setActiveTab('html');
+                }
+              }}
+              className="w-full rounded-lg border border-[#DAD4C6] bg-[#FAF9F5] px-2.5 py-1.5 text-sm font-medium text-black focus:outline-none focus:ring-2 focus:ring-[#1D4ED8] cursor-pointer"
+            >
+              {compiledPages.map((pg) => (
+                <option key={pg.id} value={pg.id}>
+                  {pg.name} ({pg.path} → {pg.fileName})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-4 pt-4 border-t border-[#DAD4C6]">
@@ -149,16 +205,22 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
             </label>
           </div>
 
-          <div className="space-y-2.5 pt-4 border-t border-[#DAD4C6]">
+          <div className="space-y-2 pt-4 border-t border-[#DAD4C6]">
             <div className="text-sm font-semibold text-black">
-              Download Files
+              Download Site Files
             </div>
             <button
               type="button"
-              onClick={() => downloadFile('index.html', htmlCode, 'text/html')}
+              onClick={() =>
+                downloadFile(
+                  activeCompiledPage?.fileName || 'index.html',
+                  htmlCode,
+                  'text/html'
+                )
+              }
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[#DAD4C6] hover:bg-[#FAF9F5] text-sm font-medium text-black cursor-pointer"
             >
-              <span>index.html</span>
+              <span>{activeCompiledPage?.fileName || 'index.html'}</span>
               <Download className="w-4 h-4 text-black" />
             </button>
             <button
@@ -169,11 +231,33 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
               <span>styles.css</span>
               <Download className="w-4 h-4 text-black" />
             </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadFile('sitemap.xml', sitemapXml, 'application/xml')
+                }
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-[#DAD4C6] hover:bg-[#FAF9F5] text-xs font-mono font-semibold text-black cursor-pointer"
+              >
+                <span>sitemap.xml</span>
+                <Download className="w-3.5 h-3.5 text-black" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadFile('robots.txt', robotsTxt, 'text/plain')
+                }
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-[#DAD4C6] hover:bg-[#FAF9F5] text-xs font-mono font-semibold text-black cursor-pointer"
+              >
+                <span>robots.txt</span>
+                <Download className="w-3.5 h-3.5 text-black" />
+              </button>
+            </div>
             <button
               type="button"
               onClick={() =>
                 downloadFile(
-                  `${project.slug || 'site'}-standalone.html`,
+                  `${project.slug || 'site'}-${activeCompiledPage?.fileName || 'index.html'}`,
                   bundleCode,
                   'text/html'
                 )
@@ -196,8 +280,10 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
             <span className="font-mono">{(cssCode.length / 1024).toFixed(1)} KB</span>
           </div>
           <div className="flex justify-between">
-            <span>Sections</span>
-            <span className="font-mono">{project.blocks.length}</span>
+            <span>Pages / Sections</span>
+            <span className="font-mono">
+              {compiledPages.length}p / {activeCompiledPage?.blockCount ?? project.blocks.length}b
+            </span>
           </div>
         </div>
       </aside>
@@ -205,26 +291,32 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
       {/* Code Viewer */}
       <div className="flex-1 flex flex-col min-w-0 p-6 overflow-hidden">
         <div className="flex-1 flex flex-col bg-[#13151A] rounded-xl border border-slate-800 overflow-hidden shadow-sm">
-          <div className="px-4 py-2.5 bg-[#1B1E25] border-b border-slate-800 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-1 p-1 bg-[#13151A] rounded-lg border border-slate-800">
+          <div className="px-4 py-2.5 bg-[#1B1E25] border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1 p-1 bg-[#13151A] rounded-lg border border-slate-800">
               {(
                 [
-                  ['html', 'index.html'],
+                  ['html', activeCompiledPage?.fileName || 'index.html'],
                   ['css', 'styles.css'],
                   ['bundle', 'standalone.html'],
+                  ['sitemap', 'sitemap.xml'],
+                  ['robots', 'robots.txt'],
                 ] as const
               ).map(([tab, label]) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-mono transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono transition-colors cursor-pointer ${
                     activeTab === tab
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-300 hover:text-white'
                   }`}
                 >
-                  <FileCode2 className="w-4 h-4" />
+                  {tab === 'sitemap' || tab === 'robots' ? (
+                    <Globe className="w-3.5 h-3.5" />
+                  ) : (
+                    <FileCode2 className="w-3.5 h-3.5" />
+                  )}
                   <span>{label}</span>
                 </button>
               ))}
@@ -243,7 +335,16 @@ export const CodeHandoffView: React.FC<CodeHandoffViewProps> = ({
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copy {activeTab === 'css' ? 'CSS' : 'HTML'}</span>
+                  <span>
+                    Copy{' '}
+                    {activeTab === 'css'
+                      ? 'CSS'
+                      : activeTab === 'sitemap'
+                        ? 'XML'
+                        : activeTab === 'robots'
+                          ? 'TXT'
+                          : 'HTML'}
+                  </span>
                 </>
               )}
             </button>

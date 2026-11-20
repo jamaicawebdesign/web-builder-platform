@@ -11,10 +11,15 @@ import {
   deleteDeploymentBySlug,
   deleteLeadSubmission,
   deleteMarketingOrder,
+  DeployedPageRecord,
+  DeploymentRecord,
   getAnalyticsData,
+  getDeploymentAutomations,
   getDeploymentByDomain,
   getDeploymentBySlug,
   getMarketingOrderByStripeSession,
+  LeadBookingSlotRecord,
+  LeadPipelineStatus,
   listDeployments,
   listLeadSubmissions,
   listMarketingOrders,
@@ -24,6 +29,7 @@ import {
   removeProject,
   saveDeployment,
   setDeploymentDomain,
+  updateLeadSubmission,
   updateMarketingOrder,
   upsertProject,
 } from './server/storage.ts';
@@ -199,6 +205,21 @@ const VERIFIED_ASSETS = [
     url: '/src/assets/images/hero_fellowship_workshop_1795062577617.jpg',
     description: 'Contemporary design and engineering fellowship studio workshop',
   },
+  {
+    id: 'team-lead-architect',
+    url: '/src/assets/images/team_lead_architect_1795148542554.jpg',
+    description: 'Editorial studio portrait of principal design & systems architect',
+  },
+  {
+    id: 'team-engineering-director',
+    url: '/src/assets/images/team_engineering_director_1795148543928.jpg',
+    description: 'Editorial studio portrait of engineering director in neutral light',
+  },
+  {
+    id: 'team-strategy-partner',
+    url: '/src/assets/images/team_strategy_partner_1795148543761.jpg',
+    description: 'Editorial studio portrait of managing strategy partner',
+  },
 ];
 
 function resolveAssetUrl(candidate?: string): string {
@@ -256,6 +277,7 @@ async function startServer(): Promise<void> {
         blocks: body.blocks,
         seo: body.seo || {},
         marketing: body.marketing || {},
+        automations: body.automations || {},
         lastDeployedSlug: body.lastDeployedSlug || null,
         lastDeployedUrl: body.lastDeployedUrl || null,
         lastDeployedAt: body.lastDeployedAt || null,
@@ -318,7 +340,10 @@ Design & Copy Rules:
   6. "/src/assets/images/hero_saas_telemetry_1795062578275.jpg" (SaaS, logistics, telemetry, analytics, enterprise software)
   7. "/src/assets/images/hero_wellness_sanctuary_1795062577433.jpg" (wellness, healthcare, longevity clinic, spa, architecture)
   8. "/src/assets/images/hero_fellowship_workshop_1795062577617.jpg" (education, cohort, fellowship, design sprint, tech studio)
-- Build 6 to 8 well-paced sections always starting with "navbar", followed by "hero", a balanced mix of middle sections ("stats", "features", "showcase", "pricing", "testimonial", "faq", "cta", "contact"), and ending with "footer".
+  9. "/src/assets/images/team_lead_architect_1795148542554.jpg" (leadership headshot: architect / principal designer)
+  10. "/src/assets/images/team_engineering_director_1795148543928.jpg" (leadership headshot: engineering / operations director)
+  11. "/src/assets/images/team_strategy_partner_1795148543761.jpg" (leadership headshot: managing partner / founder)
+- Build 6 to 9 well-paced sections always starting with "navbar", followed by "hero", an optional "logocloud" trust strip, a balanced mix of middle sections ("stats", "features", "showcase", "portfolio", "video", "team", "pricing", "calculator", "testimonial", "faq", "cta", "contact"), and ending with "footer".
 - Every section object must populate the matching *Props object corresponding to its "type".`;
 
       const response = await ai.models.generateContent({
@@ -373,10 +398,15 @@ Design & Copy Rules:
                       enum: [
                         'navbar',
                         'hero',
+                        'logocloud',
                         'features',
                         'showcase',
+                        'portfolio',
+                        'video',
                         'stats',
+                        'team',
                         'pricing',
+                        'calculator',
                         'testimonial',
                         'faq',
                         'cta',
@@ -415,7 +445,7 @@ Design & Copy Rules:
                     heroProps: {
                       type: Type.OBJECT,
                       properties: {
-                        layout: { type: Type.STRING, enum: ['split', 'centered', 'banner'] },
+                        layout: { type: Type.STRING, enum: ['split', 'split-left', 'centered', 'banner'] },
                         kicker: { type: Type.STRING },
                         headline: { type: Type.STRING },
                         subtitle: { type: Type.STRING },
@@ -433,6 +463,7 @@ Design & Copy Rules:
                         eyebrow: { type: Type.STRING },
                         heading: { type: Type.STRING },
                         intro: { type: Type.STRING },
+                        layout: { type: Type.STRING, enum: ['cards', 'bento', 'minimal', 'numbered'] },
                         columns: { type: Type.INTEGER },
                         items: {
                           type: Type.ARRAY,
@@ -584,6 +615,123 @@ Design & Copy Rules:
                         copyright: { type: Type.STRING },
                       },
                     },
+                    logocloudProps: {
+                      type: Type.OBJECT,
+                      properties: {
+                        heading: { type: Type.STRING },
+                        caption: { type: Type.STRING },
+                        layout: { type: Type.STRING, enum: ['row', 'grid', 'cards', 'compact'] },
+                        items: {
+                          type: Type.ARRAY,
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              name: { type: Type.STRING },
+                              sector: { type: Type.STRING },
+                            },
+                            required: ['name'],
+                          },
+                        },
+                      },
+                    },
+                    portfolioProps: {
+                      type: Type.OBJECT,
+                      properties: {
+                        eyebrow: { type: Type.STRING },
+                        heading: { type: Type.STRING },
+                        intro: { type: Type.STRING },
+                        layout: { type: Type.STRING, enum: ['grid', 'bento', 'rows'] },
+                        columns: { type: Type.INTEGER },
+                        items: {
+                          type: Type.ARRAY,
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              title: { type: Type.STRING },
+                              category: { type: Type.STRING },
+                              client: { type: Type.STRING },
+                              metric: { type: Type.STRING },
+                              summary: { type: Type.STRING },
+                              challenge: { type: Type.STRING },
+                              outcome: { type: Type.STRING },
+                              imageUrl: { type: Type.STRING },
+                              imageAlt: { type: Type.STRING },
+                              linkLabel: { type: Type.STRING },
+                              linkHref: { type: Type.STRING },
+                            },
+                            required: ['title', 'category', 'client', 'metric', 'summary', 'imageUrl', 'imageAlt'],
+                          },
+                        },
+                      },
+                    },
+                    videoProps: {
+                      type: Type.OBJECT,
+                      properties: {
+                        eyebrow: { type: Type.STRING },
+                        heading: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        videoUrl: { type: Type.STRING },
+                        posterUrl: { type: Type.STRING },
+                        posterAlt: { type: Type.STRING },
+                        durationLabel: { type: Type.STRING },
+                        highlights: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        ctaLabel: { type: Type.STRING },
+                        ctaHref: { type: Type.STRING },
+                      },
+                    },
+                    teamProps: {
+                      type: Type.OBJECT,
+                      properties: {
+                        eyebrow: { type: Type.STRING },
+                        heading: { type: Type.STRING },
+                        intro: { type: Type.STRING },
+                        columns: { type: Type.INTEGER },
+                        members: {
+                          type: Type.ARRAY,
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              name: { type: Type.STRING },
+                              role: { type: Type.STRING },
+                              bio: { type: Type.STRING },
+                              imageUrl: { type: Type.STRING },
+                              imageAlt: { type: Type.STRING },
+                              linkedinUrl: { type: Type.STRING },
+                              xUrl: { type: Type.STRING },
+                              websiteUrl: { type: Type.STRING },
+                            },
+                            required: ['name', 'role', 'bio', 'imageUrl', 'imageAlt'],
+                          },
+                        },
+                      },
+                    },
+                    calculatorProps: {
+                      type: Type.OBJECT,
+                      properties: {
+                        eyebrow: { type: Type.STRING },
+                        heading: { type: Type.STRING },
+                        intro: { type: Type.STRING },
+                        currencySymbol: { type: Type.STRING },
+                        primaryInputLabel: { type: Type.STRING },
+                        primaryMin: { type: Type.INTEGER },
+                        primaryMax: { type: Type.INTEGER },
+                        primaryStep: { type: Type.INTEGER },
+                        primaryDefault: { type: Type.INTEGER },
+                        primaryUnitLabel: { type: Type.STRING },
+                        secondaryInputLabel: { type: Type.STRING },
+                        secondaryMin: { type: Type.INTEGER },
+                        secondaryMax: { type: Type.INTEGER },
+                        secondaryStep: { type: Type.INTEGER },
+                        secondaryDefault: { type: Type.INTEGER },
+                        secondaryUnitLabel: { type: Type.STRING },
+                        hourlyRate: { type: Type.INTEGER },
+                        monthlyPlatformCostPerPrimary: { type: Type.INTEGER },
+                        baseMonthlyFee: { type: Type.INTEGER },
+                        roiHeadlineLabel: { type: Type.STRING },
+                        ctaLabel: { type: Type.STRING },
+                        ctaHref: { type: Type.STRING },
+                      },
+                    },
                   },
                   required: ['type', 'label', 'backgroundVariant', 'paddingY'],
                 },
@@ -649,7 +797,7 @@ Design & Copy Rules:
             return {
               ...base,
               props: {
-                layout: ['split', 'centered', 'banner'].includes(sec.heroProps.layout)
+                layout: ['split', 'split-left', 'centered', 'banner'].includes(sec.heroProps.layout)
                   ? sec.heroProps.layout
                   : 'split',
                 kicker: sec.heroProps.kicker || '',
@@ -671,7 +819,10 @@ Design & Copy Rules:
                 eyebrow: sec.featuresProps.eyebrow || 'Capabilities',
                 heading: sec.featuresProps.heading || 'Core Features',
                 intro: sec.featuresProps.intro || '',
-                columns: sec.featuresProps.columns === 2 ? 2 : 3,
+                layout: ['cards', 'bento', 'minimal', 'numbered'].includes(sec.featuresProps.layout)
+                  ? sec.featuresProps.layout
+                  : 'cards',
+                columns: [2, 3, 4].includes(sec.featuresProps.columns) ? sec.featuresProps.columns : 3,
                 items: Array.isArray(sec.featuresProps.items) ? sec.featuresProps.items : [],
               },
             };
@@ -771,6 +922,130 @@ Design & Copy Rules:
               },
             };
           }
+          if (type === 'logocloud' && sec.logocloudProps) {
+            return {
+              ...base,
+              props: {
+                heading: sec.logocloudProps.heading || 'Trusted by category-leading teams',
+                caption: sec.logocloudProps.caption || '',
+                layout: ['row', 'grid', 'cards', 'compact'].includes(sec.logocloudProps.layout)
+                  ? sec.logocloudProps.layout
+                  : 'row',
+                items: Array.isArray(sec.logocloudProps.items) ? sec.logocloudProps.items.slice(0, 8) : [],
+              },
+            };
+          }
+          if (type === 'portfolio' && sec.portfolioProps) {
+            return {
+              ...base,
+              props: {
+                eyebrow: sec.portfolioProps.eyebrow || 'Selected Work',
+                heading: sec.portfolioProps.heading || 'Case Studies',
+                intro: sec.portfolioProps.intro || '',
+                layout: ['grid', 'bento', 'rows'].includes(sec.portfolioProps.layout)
+                  ? sec.portfolioProps.layout
+                  : 'grid',
+                columns: sec.portfolioProps.columns === 2 ? 2 : 3,
+                items: Array.isArray(sec.portfolioProps.items)
+                  ? sec.portfolioProps.items.slice(0, 6).map((item: Record<string, any>) => ({
+                      title: String(item.title || 'Featured Engagement'),
+                      category: String(item.category || 'Strategy'),
+                      client: String(item.client || 'Partner Client'),
+                      metric: String(item.metric || '+40% efficiency'),
+                      summary: String(item.summary || ''),
+                      challenge: item.challenge ? String(item.challenge) : '',
+                      outcome: item.outcome ? String(item.outcome) : '',
+                      imageUrl: resolveAssetUrl(item.imageUrl),
+                      imageAlt: String(item.imageAlt || item.title || 'Project visual'),
+                      linkLabel: item.linkLabel ? String(item.linkLabel) : 'Inspect case study',
+                      linkHref: item.linkHref ? String(item.linkHref) : '#contact',
+                    }))
+                  : [],
+              },
+            };
+          }
+          if (type === 'video' && sec.videoProps) {
+            return {
+              ...base,
+              props: {
+                eyebrow: sec.videoProps.eyebrow || 'Product Walkthrough',
+                heading: sec.videoProps.heading || 'See the platform in action',
+                description: sec.videoProps.description || '',
+                videoUrl: sec.videoProps.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                posterUrl: resolveAssetUrl(sec.videoProps.posterUrl),
+                posterAlt: sec.videoProps.posterAlt || 'Product demonstration poster',
+                durationLabel: sec.videoProps.durationLabel || '02:30 Walkthrough',
+                highlights: Array.isArray(sec.videoProps.highlights)
+                  ? sec.videoProps.highlights.slice(0, 5)
+                  : [],
+                ctaLabel: sec.videoProps.ctaLabel || 'Book Live Demo',
+                ctaHref: sec.videoProps.ctaHref || '#contact',
+              },
+            };
+          }
+          if (type === 'team' && sec.teamProps) {
+            const portraitFallbacks = [
+              '/src/assets/images/team_lead_architect_1795148542554.jpg',
+              '/src/assets/images/team_engineering_director_1795148543928.jpg',
+              '/src/assets/images/team_strategy_partner_1795148543761.jpg',
+            ];
+            return {
+              ...base,
+              props: {
+                eyebrow: sec.teamProps.eyebrow || 'Leadership',
+                heading: sec.teamProps.heading || 'The people behind the work',
+                intro: sec.teamProps.intro || '',
+                columns: [2, 3, 4].includes(sec.teamProps.columns) ? sec.teamProps.columns : 3,
+                members: Array.isArray(sec.teamProps.members)
+                  ? sec.teamProps.members.slice(0, 6).map((m: Record<string, any>, idx: number) => ({
+                      name: String(m.name || 'Team Lead'),
+                      role: String(m.role || 'Director'),
+                      bio: String(m.bio || ''),
+                      imageUrl: m.imageUrl
+                        ? resolveAssetUrl(m.imageUrl)
+                        : portraitFallbacks[idx % portraitFallbacks.length],
+                      imageAlt: String(m.imageAlt || `${m.name || 'Leader'} portrait`),
+                      linkedinUrl: m.linkedinUrl ? String(m.linkedinUrl) : 'https://linkedin.com',
+                      xUrl: m.xUrl ? String(m.xUrl) : '',
+                      websiteUrl: m.websiteUrl ? String(m.websiteUrl) : '',
+                    }))
+                  : [],
+              },
+            };
+          }
+          if (type === 'calculator' && sec.calculatorProps) {
+            const c = sec.calculatorProps;
+            return {
+              ...base,
+              props: {
+                eyebrow: c.eyebrow || 'ROI Calculator',
+                heading: c.heading || 'Estimate your annual impact',
+                intro: c.intro || '',
+                currencySymbol: c.currencySymbol || '$',
+                primaryInputLabel: c.primaryInputLabel || 'Active team seats',
+                primaryMin: Number(c.primaryMin) > 0 ? Number(c.primaryMin) : 5,
+                primaryMax: Number(c.primaryMax) > 10 ? Number(c.primaryMax) : 150,
+                primaryStep: Number(c.primaryStep) > 0 ? Number(c.primaryStep) : 5,
+                primaryDefault: Number(c.primaryDefault) > 0 ? Number(c.primaryDefault) : 25,
+                primaryUnitLabel: c.primaryUnitLabel || 'seats',
+                secondaryInputLabel: c.secondaryInputLabel || 'Hours saved per seat / mo',
+                secondaryMin: Number(c.secondaryMin) > 0 ? Number(c.secondaryMin) : 2,
+                secondaryMax: Number(c.secondaryMax) > 5 ? Number(c.secondaryMax) : 30,
+                secondaryStep: Number(c.secondaryStep) > 0 ? Number(c.secondaryStep) : 1,
+                secondaryDefault: Number(c.secondaryDefault) > 0 ? Number(c.secondaryDefault) : 8,
+                secondaryUnitLabel: c.secondaryUnitLabel || 'hrs/mo',
+                hourlyRate: Number(c.hourlyRate) > 0 ? Number(c.hourlyRate) : 95,
+                monthlyPlatformCostPerPrimary:
+                  Number(c.monthlyPlatformCostPerPrimary) >= 0
+                    ? Number(c.monthlyPlatformCostPerPrimary)
+                    : 39,
+                baseMonthlyFee: Number(c.baseMonthlyFee) >= 0 ? Number(c.baseMonthlyFee) : 199,
+                roiHeadlineLabel: c.roiHeadlineLabel || 'Estimated Net Monthly Value',
+                ctaLabel: c.ctaLabel || 'Lock in Custom Quote',
+                ctaHref: c.ctaHref || '#contact',
+              },
+            };
+          }
           return null;
         })
         .filter(Boolean);
@@ -861,6 +1136,31 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
       const blockCount = Number(req.body?.blockCount || 0);
       const studioHost = getStudioHost(req);
 
+      let pages: DeployedPageRecord[] | undefined = undefined;
+      if (Array.isArray(req.body?.pages) && req.body.pages.length > 0) {
+        const cleanedPages: DeployedPageRecord[] = [];
+        const seenPaths = new Set<string>();
+        for (const rawPage of req.body.pages.slice(0, 25)) {
+          if (!rawPage || typeof rawPage !== 'object') continue;
+          const pageHtml = String(rawPage.html || '');
+          if (!pageHtml || !pageHtml.includes('<html')) continue;
+          const normPath = normalizePageRoute(String(rawPage.path || '/'));
+          if (seenPaths.has(normPath)) continue;
+          seenPaths.add(normPath);
+          cleanedPages.push({
+            path: normPath,
+            name: String(rawPage.name || (normPath === '/' ? 'Home' : normPath.slice(1))).slice(0, 80),
+            title: rawPage.title ? String(rawPage.title).slice(0, 160) : undefined,
+            description: rawPage.description ? String(rawPage.description).slice(0, 320) : undefined,
+            html: pageHtml,
+            blockCount: Number(rawPage.blockCount || 0),
+          });
+        }
+        if (cleanedPages.length > 0) {
+          pages = cleanedPages;
+        }
+      }
+
       let customDomain: string | null | undefined = undefined;
       if (typeof req.body?.customDomain === 'string') {
         const trimmed = req.body.customDomain.trim();
@@ -872,6 +1172,11 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         return;
       }
 
+      const automations =
+        req.body?.automations && typeof req.body.automations === 'object'
+          ? (req.body.automations as Record<string, unknown>)
+          : undefined;
+
       const deployedAt = new Date().toISOString();
       const saved = await saveDeployment({
         slug,
@@ -880,10 +1185,17 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         name,
         description,
         html,
+        pages,
+        ...(automations ? { automations } : {}),
         blockCount,
         customDomain,
         deployedAt,
       });
+
+      const pagePaths =
+        Array.isArray(saved.pages) && saved.pages.length > 0
+          ? saved.pages.map((p) => p.path)
+          : ['/'];
 
       res.json({
         slug: saved.slug,
@@ -893,6 +1205,8 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         description: saved.description,
         deployedAt: saved.deployedAt,
         blockCount: saved.blockCount,
+        pagesCount: pagePaths.length,
+        pagePaths,
         customDomain: saved.customDomain ?? null,
         domainVerified: Boolean(saved.domainVerified),
         domainVerifiedAt: saved.domainVerifiedAt ?? null,
@@ -1077,6 +1391,126 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
     next();
   });
 
+  function isSafeWebhookUrl(rawUrl: string): boolean {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '0.0.0.0' ||
+        host === '::1' ||
+        host.startsWith('127.') ||
+        host.startsWith('169.254.') ||
+        host.startsWith('10.') ||
+        host.startsWith('192.168.') ||
+        host.endsWith('.local')
+      ) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function deliverLeadWebhook(
+    webhookUrl: string,
+    format: 'json' | 'slack' | 'discord',
+    leadPayload: {
+      siteSlug: string;
+      name: string;
+      email: string;
+      phone?: string;
+      company?: string;
+      message: string;
+      customData?: Record<string, string | boolean>;
+      bookingSlot?: LeadBookingSlotRecord | null;
+      submittedAt: string;
+      isTest?: boolean;
+    }
+  ): Promise<{ delivered: boolean; statusCode: number | null; responsePreview?: string }> {
+    if (!isSafeWebhookUrl(webhookUrl)) {
+      return { delivered: false, statusCode: null, responsePreview: 'Invalid or blocked webhook URL' };
+    }
+
+    const bookingSummary = leadPayload.bookingSlot
+      ? `${leadPayload.bookingSlot.date} at ${leadPayload.bookingSlot.time}${
+          leadPayload.bookingSlot.timezone ? ` (${leadPayload.bookingSlot.timezone})` : ''
+        }${leadPayload.bookingSlot.duration ? ` · ${leadPayload.bookingSlot.duration}` : ''}`
+      : null;
+
+    const customLines = leadPayload.customData
+      ? Object.entries(leadPayload.customData).map(([k, v]) => `• ${k}: ${String(v)}`)
+      : [];
+
+    let bodyObj: Record<string, unknown>;
+    if (format === 'slack') {
+      const titlePrefix = leadPayload.isTest ? '[TEST] ' : '';
+      const lines = [
+        `*${titlePrefix}${bookingSummary ? 'New Consultation Booked' : 'New Lead Submission'}* on \`/${leadPayload.siteSlug}\``,
+        `*Name:* ${leadPayload.name}`,
+        `*Email:* ${leadPayload.email}`,
+        ...(leadPayload.phone ? [`*Phone:* ${leadPayload.phone}`] : []),
+        ...(leadPayload.company ? [`*Company:* ${leadPayload.company}`] : []),
+        ...(bookingSummary ? [`*Scheduled Slot:* ${bookingSummary}`] : []),
+        ...(leadPayload.message ? [`*Brief:* ${leadPayload.message}`] : []),
+        ...customLines,
+      ];
+      bodyObj = { text: lines.join('\n') };
+    } else if (format === 'discord') {
+      const titlePrefix = leadPayload.isTest ? '[TEST] ' : '';
+      bodyObj = {
+        content: `${titlePrefix}${bookingSummary ? 'New Consultation Booked' : 'New Lead'} on /${leadPayload.siteSlug}`,
+        embeds: [
+          {
+            title: `${leadPayload.name} (${leadPayload.email})`,
+            description: leadPayload.message || 'Lead submission received',
+            color: 1920728,
+            fields: [
+              ...(leadPayload.phone ? [{ name: 'Phone', value: leadPayload.phone, inline: true }] : []),
+              ...(leadPayload.company ? [{ name: 'Company', value: leadPayload.company, inline: true }] : []),
+              ...(bookingSummary ? [{ name: 'Consultation Slot', value: bookingSummary, inline: false }] : []),
+              ...(customLines.length > 0
+                ? [{ name: 'Form Details', value: customLines.join('\n').slice(0, 900), inline: false }]
+                : []),
+            ],
+            timestamp: leadPayload.submittedAt,
+          },
+        ],
+      };
+    } else {
+      bodyObj = {
+        event: leadPayload.isTest ? 'lead.test' : bookingSummary ? 'booking.created' : 'lead.submitted',
+        ...leadPayload,
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyObj),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const preview = (await res.text().catch(() => '')).slice(0, 200);
+      return {
+        delivered: res.ok,
+        statusCode: res.status,
+        responsePreview: preview,
+      };
+    } catch (err) {
+      return {
+        delivered: false,
+        statusCode: null,
+        responsePreview: err instanceof Error ? err.message : 'Webhook request failed',
+      };
+    }
+  }
+
   // Live Lead Capture for Deployed Client Sites
   app.post('/api/sites/:slug/submit', async (req, res) => {
     const clientIp = req.ip || 'local';
@@ -1087,20 +1521,110 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
 
     try {
       const slug = sanitizeSlug(req.params.slug);
-      const name = String(req.body?.name || '').trim().slice(0, 120);
-      const email = String(req.body?.email || '').trim().slice(0, 160);
-      const message = String(req.body?.message || '').trim().slice(0, 2000);
+      const rawBody = req.body || {};
 
-      if (!name || !email || !message || !email.includes('@')) {
-        res.status(400).json({ error: 'Please provide a valid name, email, and message.' });
+      const cleanCustomData: Record<string, string | boolean> = {};
+      if (rawBody.customData && typeof rawBody.customData === 'object') {
+        for (const [k, v] of Object.entries(rawBody.customData as Record<string, unknown>).slice(0, 20)) {
+          const safeKey = String(k).trim().slice(0, 64);
+          if (!safeKey) continue;
+          if (typeof v === 'boolean') {
+            cleanCustomData[safeKey] = v;
+          } else {
+            const valStr = String(v ?? '').trim().slice(0, 600);
+            if (valStr) cleanCustomData[safeKey] = valStr;
+          }
+        }
+      }
+
+      const name = String(rawBody.name || cleanCustomData.full_name || 'Website Visitor')
+        .trim()
+        .slice(0, 120);
+      const email = String(rawBody.email || cleanCustomData.work_email || '')
+        .trim()
+        .slice(0, 160);
+      const phone = String(rawBody.phone || cleanCustomData.phone || '').trim().slice(0, 60);
+      const company = String(rawBody.company || cleanCustomData.company || '').trim().slice(0, 120);
+
+      let bookingSlot: LeadBookingSlotRecord | null = null;
+      if (rawBody.bookingSlot && typeof rawBody.bookingSlot === 'object') {
+        const bDate = String(rawBody.bookingSlot.date || '').trim().slice(0, 60);
+        const bTime = String(rawBody.bookingSlot.time || '').trim().slice(0, 40);
+        if (bDate && bTime) {
+          bookingSlot = {
+            date: bDate,
+            time: bTime,
+            ...(rawBody.bookingSlot.timezone
+              ? { timezone: String(rawBody.bookingSlot.timezone).trim().slice(0, 60) }
+              : {}),
+            ...(rawBody.bookingSlot.duration
+              ? { duration: String(rawBody.bookingSlot.duration).trim().slice(0, 40) }
+              : {}),
+          };
+        }
+      }
+
+      let message = String(rawBody.message || '').trim().slice(0, 2000);
+      if (!message) {
+        const parts: string[] = [];
+        if (bookingSlot) {
+          parts.push(`Consultation requested for ${bookingSlot.date} at ${bookingSlot.time}`);
+        }
+        for (const [k, v] of Object.entries(cleanCustomData)) {
+          parts.push(`${k}: ${String(v)}`);
+        }
+        message = parts.join(' · ').slice(0, 2000);
+      }
+
+      if (!name || !email || !email.includes('@')) {
+        res.status(400).json({ error: 'Please provide a valid name and email address.' });
         return;
+      }
+      if (!message && !bookingSlot && Object.keys(cleanCustomData).length === 0) {
+        res.status(400).json({ error: 'Please include a message or select a consultation slot.' });
+        return;
+      }
+
+      let webhookStatus: 'none' | 'delivered' | 'failed' = 'none';
+      let webhookResponseCode: number | null = null;
+
+      const automations = await getDeploymentAutomations(slug);
+      const webhookUrl =
+        automations && typeof automations.webhookUrl === 'string'
+          ? automations.webhookUrl.trim()
+          : '';
+      if (webhookUrl) {
+        const format =
+          automations?.webhookFormat === 'slack' || automations?.webhookFormat === 'discord'
+            ? automations.webhookFormat
+            : 'json';
+        const delivery = await deliverLeadWebhook(webhookUrl, format, {
+          siteSlug: slug,
+          name,
+          email,
+          ...(phone ? { phone } : {}),
+          ...(company ? { company } : {}),
+          message: message || 'New inquiry',
+          ...(Object.keys(cleanCustomData).length > 0 ? { customData: cleanCustomData } : {}),
+          ...(bookingSlot ? { bookingSlot } : {}),
+          submittedAt: new Date().toISOString(),
+        });
+        webhookStatus = delivery.delivered ? 'delivered' : 'failed';
+        webhookResponseCode = delivery.statusCode;
       }
 
       const lead = await createLeadSubmission({
         siteSlug: slug,
         name,
         email,
-        message,
+        ...(phone ? { phone } : {}),
+        ...(company ? { company } : {}),
+        message: message || 'Consultation booking inquiry',
+        ...(Object.keys(cleanCustomData).length > 0 ? { customData: cleanCustomData } : {}),
+        ...(bookingSlot ? { bookingSlot } : {}),
+        status: bookingSlot ? 'booked' : 'new',
+        webhookStatus,
+        webhookResponseCode,
       });
 
       void recordAnalyticsEvent({
@@ -1108,12 +1632,78 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         eventType: 'form_submit',
         deviceType: detectDeviceFromUa(req.headers['user-agent'] || ''),
         referrer: extractReferrerHost(req.headers.referer),
-        targetLabel: 'Contact Form',
+        targetLabel: bookingSlot ? 'Consultation Booked' : 'Contact Form',
       });
 
-      res.status(201).json({ ok: true, id: lead.id });
+      res.status(201).json({
+        ok: true,
+        id: lead.id,
+        booked: Boolean(bookingSlot),
+        webhookStatus,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to record inquiry.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.post('/api/automations/test-webhook', async (req, res) => {
+    try {
+      const webhookUrl = String(req.body?.webhookUrl || '').trim();
+      const format =
+        req.body?.webhookFormat === 'slack' || req.body?.webhookFormat === 'discord'
+          ? req.body.webhookFormat
+          : 'json';
+      const siteSlug = sanitizeSlug(req.body?.siteSlug || 'studio-preview');
+
+      if (!webhookUrl) {
+        res.status(400).json({ error: 'Please enter a webhook URL to test.' });
+        return;
+      }
+      if (!isSafeWebhookUrl(webhookUrl)) {
+        res.status(400).json({
+          error: 'Please use a valid public http(s) webhook URL (localhost/private IPs are blocked).',
+        });
+        return;
+      }
+
+      const result = await deliverLeadWebhook(webhookUrl, format, {
+        siteSlug,
+        name: 'Alex Morgan (Test Lead)',
+        email: 'alex.morgan@example.com',
+        phone: '+1 (415) 555-0148',
+        company: 'Northwind Craft',
+        message: 'Testing custom form & consultation booking automation webhook.',
+        customData: {
+          project_budget: '$15k - $35k',
+          service_interest: 'Full Brand & Web System',
+        },
+        bookingSlot: {
+          date: 'Thu, Nov 26',
+          time: '10:30 AM',
+          timezone: 'EST (UTC-5)',
+          duration: '30 min',
+        },
+        submittedAt: new Date().toISOString(),
+        isTest: true,
+      });
+
+      if (!result.delivered) {
+        res.status(502).json({
+          ok: false,
+          statusCode: result.statusCode,
+          error: result.responsePreview || `Webhook returned HTTP ${result.statusCode || 'error'}`,
+        });
+        return;
+      }
+
+      res.json({
+        ok: true,
+        statusCode: result.statusCode,
+        responsePreview: result.responsePreview,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Webhook test failed.';
       res.status(500).json({ error: message });
     }
   });
@@ -1164,6 +1754,29 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
       res.json({ leads });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load leads.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.patch('/api/leads/:id', async (req, res) => {
+    try {
+      const id = String(req.params.id || '').slice(0, 80);
+      const rawStatus = String(req.body?.status || '').trim();
+      const allowedStatuses: LeadPipelineStatus[] = ['new', 'contacted', 'booked', 'archived'];
+      if (!allowedStatuses.includes(rawStatus as LeadPipelineStatus)) {
+        res.status(400).json({ error: 'Invalid lead status.' });
+        return;
+      }
+      const updated = await updateLeadSubmission(id, {
+        status: rawStatus as LeadPipelineStatus,
+      });
+      if (!updated) {
+        res.status(404).json({ error: 'Lead not found.' });
+        return;
+      }
+      res.json({ ok: true, lead: updated });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update lead.';
       res.status(500).json({ error: message });
     }
   });
@@ -1596,10 +2209,153 @@ Rules:
     }
   });
 
-  // Live hosted route for deployed websites
-  app.get('/sites/:slug', async (req, res) => {
+  function normalizePageRoute(rawPath: string): string {
+    const clean = String(rawPath || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\?.*$/, '')
+      .replace(/#.*$/, '')
+      .replace(/^\/+|\/+$/g, '')
+      .replace(/[^a-z0-9/-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/\/+/g, '/');
+    if (!clean || clean === 'index' || clean === 'index.html') return '/';
+    return `/${clean.replace(/\.html$/i, '')}`;
+  }
+
+  function escapeXml(str: string): string {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  function getRequestOrigin(req: express.Request): string {
+    const protoHeader = req.headers['x-forwarded-proto'];
+    const proto = String(Array.isArray(protoHeader) ? protoHeader[0] : protoHeader || req.protocol || 'https')
+      .split(',')[0]
+      .trim();
+    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+    const host = String(Array.isArray(rawHost) ? rawHost[0] : rawHost).split(',')[0].trim();
+    return `${proto}://${host}`;
+  }
+
+  function buildSitemapXml(record: DeploymentRecord, basePrefixUrl: string): string {
+    const cleanBase = basePrefixUrl.replace(/\/+$/, '');
+    const lastmod = (record.deployedAt || new Date().toISOString()).slice(0, 10);
+    const pages =
+      Array.isArray(record.pages) && record.pages.length > 0
+        ? record.pages
+        : [{ path: '/', name: 'Home', html: record.html, blockCount: record.blockCount }];
+
+    const urls = pages
+      .map((page) => {
+        const norm = normalizePageRoute(page.path);
+        const loc = norm === '/' ? `${cleanBase}/` : `${cleanBase}${norm}`;
+        const priority = norm === '/' ? '1.0' : '0.8';
+        return `  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${escapeXml(lastmod)}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+      })
+      .join('\n');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+  }
+
+  function buildRobotsTxt(sitemapUrl: string): string {
+    return `User-agent: *\nAllow: /\n\nSitemap: ${sitemapUrl}\n`;
+  }
+
+  function resolveDeploymentPageHtml(
+    record: DeploymentRecord,
+    requestedPath: string
+  ): { html: string | null; pagePaths: string[] } {
+    const normReq = normalizePageRoute(requestedPath);
+    const pages = Array.isArray(record.pages) && record.pages.length > 0 ? record.pages : null;
+    if (!pages) {
+      return {
+        html: normReq === '/' ? record.html : null,
+        pagePaths: ['/'],
+      };
+    }
+    const pagePaths = pages.map((p) => normalizePageRoute(p.path));
+    const matched = pages.find((p) => normalizePageRoute(p.path) === normReq);
+    if (matched) {
+      return { html: matched.html, pagePaths };
+    }
+    if (normReq === '/') {
+      return { html: pages[0]?.html || record.html, pagePaths };
+    }
+    return { html: null, pagePaths };
+  }
+
+  function rewritePreviewSiteLinks(html: string, slug: string, pagePaths: string[]): string {
+    const pathSet = new Set(pagePaths.map((p) => normalizePageRoute(p)));
+    return html.replace(/href=(["'])(\/[^"'#?]*)([#?][^"']*)?\1/gi, (full, quote, pathname, suffix = '') => {
+      if (pathname.startsWith('//') || pathname.startsWith('/api/') || pathname.startsWith('/sites/')) {
+        return full;
+      }
+      const norm = normalizePageRoute(pathname);
+      if (norm === '/') {
+        return `href=${quote}/sites/${slug}${suffix}${quote}`;
+      }
+      if (pathSet.has(norm)) {
+        return `href=${quote}/sites/${slug}${norm}${suffix}${quote}`;
+      }
+      return full;
+    });
+  }
+
+  // Auto-generated sitemap.xml & robots.txt for /sites/:slug deployments
+  app.get('/sites/:slug/sitemap.xml', async (req, res) => {
     try {
       const slug = sanitizeSlug(req.params.slug);
+      const record = await getDeploymentBySlug(slug);
+      if (!record) {
+        res.status(404).type('text').send('Deployment not found.');
+        return;
+      }
+      const base = record.customDomain
+        ? `https://${record.customDomain}`
+        : `${getRequestOrigin(req)}/sites/${slug}`;
+      res.setHeader('Cache-Control', 'no-cache');
+      res.type('application/xml').send(buildSitemapXml(record, base));
+    } catch {
+      res.status(500).type('text').send('Unable to generate sitemap.xml');
+    }
+  });
+
+  app.get('/sites/:slug/robots.txt', async (req, res) => {
+    try {
+      const slug = sanitizeSlug(req.params.slug);
+      const record = await getDeploymentBySlug(slug);
+      if (!record) {
+        res.status(404).type('text').send('Deployment not found.');
+        return;
+      }
+      const sitemapUrl = record.customDomain
+        ? `https://${record.customDomain}/sitemap.xml`
+        : `${getRequestOrigin(req)}/sites/${slug}/sitemap.xml`;
+      res.setHeader('Cache-Control', 'no-cache');
+      res.type('text/plain').send(buildRobotsTxt(sitemapUrl));
+    } catch {
+      res.status(500).type('text').send('Unable to generate robots.txt');
+    }
+  });
+
+  // Live hosted routes for deployed websites (home + multi-page subroutes)
+  const handleHostedSiteRequest = async (req: express.Request, res: express.Response) => {
+    try {
+      const slug = sanitizeSlug(req.params.slug);
+      const rawSubpath = req.params[0] ? `/${req.params[0]}` : '/';
       const record = await getDeploymentBySlug(slug);
       if (!record) {
         res.status(404).type('html').send(`<!doctype html>
@@ -1611,22 +2367,37 @@ Rules:
         return;
       }
 
+      const { html, pagePaths } = resolveDeploymentPageHtml(record, rawSubpath);
+      if (!html) {
+        res.status(404).type('html').send(`<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page Not Found — ${record.name}</title>
+<style>body{font-family:system-ui,sans-serif;font-size:18px;display:grid;place-items:center;min-height:100vh;margin:0;background:#f6f7f8;color:#000000;text-align:center;padding:24px}a{color:#1d4ed8;font-weight:600;text-decoration:none}</style></head>
+<body><div><h1>Page Not Found</h1><p>The page "${rawSubpath}" does not exist on ${record.name}.</p><p><a href="/sites/${slug}">Go back to Home</a></p></div></body>
+</html>`);
+        return;
+      }
+
       void recordAnalyticsEvent({
         siteSlug: slug,
         eventType: 'page_view',
         deviceType: detectDeviceFromUa(req.headers['user-agent'] || ''),
         referrer: extractAttribution(req),
-        targetLabel: '/',
+        targetLabel: normalizePageRoute(rawSubpath),
       });
 
+      const finalHtml = rewritePreviewSiteLinks(html, slug, pagePaths);
       res.setHeader('Cache-Control', 'no-cache');
-      res.type('html').send(record.html);
-    } catch (error) {
+      res.type('html').send(finalHtml);
+    } catch {
       res.status(500).type('text').send('Unable to load deployed site.');
     }
-  });
+  };
 
-  // Custom Domain Hostname Routing Middleware (serves connected client sites at "/")
+  app.get('/sites/:slug', handleHostedSiteRequest);
+  app.get('/sites/:slug/*', handleHostedSiteRequest);
+
+  // Custom Domain Hostname Routing Middleware (serves connected client sites, multi-page routes, sitemap.xml & robots.txt)
   app.use(async (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       next();
@@ -1670,16 +2441,39 @@ Rules:
         return;
       }
 
+      if (reqPath === '/sitemap.xml') {
+        res.setHeader('Cache-Control', 'no-cache');
+        res.type('application/xml').send(buildSitemapXml(site, getRequestOrigin(req)));
+        return;
+      }
+
+      if (reqPath === '/robots.txt') {
+        res.setHeader('Cache-Control', 'no-cache');
+        res.type('text/plain').send(buildRobotsTxt(`${getRequestOrigin(req)}/sitemap.xml`));
+        return;
+      }
+
+      const { html } = resolveDeploymentPageHtml(site, reqPath);
+      if (!html) {
+        res.status(404).type('html').send(`<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page Not Found — ${site.name}</title>
+<style>body{font-family:system-ui,sans-serif;font-size:18px;display:grid;place-items:center;min-height:100vh;margin:0;background:#f6f7f8;color:#000000;text-align:center;padding:24px}a{color:#1d4ed8;font-weight:600;text-decoration:none}</style></head>
+<body><div><h1>Page Not Found</h1><p>This page could not be found on ${incomingHost}.</p><p><a href="/">Return Home</a></p></div></body>
+</html>`);
+        return;
+      }
+
       void recordAnalyticsEvent({
         siteSlug: site.slug,
         eventType: 'page_view',
         deviceType: detectDeviceFromUa(req.headers['user-agent'] || ''),
         referrer: extractAttribution(req),
-        targetLabel: reqPath,
+        targetLabel: normalizePageRoute(reqPath),
       });
 
       res.setHeader('Cache-Control', 'no-cache');
-      res.type('html').send(site.html);
+      res.type('html').send(html);
     } catch {
       next();
     }

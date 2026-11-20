@@ -1,10 +1,15 @@
 export type BlockType =
   | 'navbar'
   | 'hero'
+  | 'logocloud'
   | 'features'
   | 'showcase'
+  | 'portfolio'
+  | 'video'
   | 'stats'
+  | 'team'
   | 'pricing'
+  | 'calculator'
   | 'testimonial'
   | 'faq'
   | 'cta'
@@ -39,6 +44,36 @@ export interface FeatureItem {
   title: string;
   description: string;
   meta?: string;
+}
+
+export interface LogoCloudItem {
+  name: string;
+  sector?: string;
+}
+
+export interface PortfolioItem {
+  title: string;
+  category: string;
+  client: string;
+  metric: string;
+  summary: string;
+  challenge?: string;
+  outcome?: string;
+  imageUrl: string;
+  imageAlt: string;
+  linkLabel?: string;
+  linkHref?: string;
+}
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  bio: string;
+  imageUrl: string;
+  imageAlt: string;
+  linkedinUrl?: string;
+  xUrl?: string;
+  websiteUrl?: string;
 }
 
 export interface StatItem {
@@ -89,7 +124,7 @@ export interface NavbarBlock extends BlockBase {
 export interface HeroBlock extends BlockBase {
   type: 'hero';
   props: {
-    layout: 'split' | 'centered' | 'banner';
+    layout: 'split' | 'split-left' | 'centered' | 'banner';
     kicker: string;
     headline: string;
     subtitle: string;
@@ -102,13 +137,24 @@ export interface HeroBlock extends BlockBase {
   };
 }
 
+export interface LogoCloudBlock extends BlockBase {
+  type: 'logocloud';
+  props: {
+    heading: string;
+    caption?: string;
+    layout: 'grid' | 'row' | 'cards' | 'compact';
+    items: LogoCloudItem[];
+  };
+}
+
 export interface FeaturesBlock extends BlockBase {
   type: 'features';
   props: {
     eyebrow: string;
     heading: string;
     intro: string;
-    columns: 2 | 3;
+    columns: 2 | 3 | 4;
+    layout?: 'cards' | 'bento' | 'minimal' | 'numbered';
     items: FeatureItem[];
   };
 }
@@ -125,6 +171,36 @@ export interface ShowcaseBlock extends BlockBase {
     imageUrl: string;
     imageAlt: string;
     imagePosition: 'left' | 'right';
+    layout?: 'split' | 'wide-media' | 'stacked';
+  };
+}
+
+export interface PortfolioBlock extends BlockBase {
+  type: 'portfolio';
+  props: {
+    eyebrow: string;
+    heading: string;
+    intro: string;
+    columns: 2 | 3;
+    layout?: 'grid' | 'bento' | 'rows';
+    items: PortfolioItem[];
+  };
+}
+
+export interface VideoBlock extends BlockBase {
+  type: 'video';
+  props: {
+    eyebrow: string;
+    heading: string;
+    description: string;
+    videoUrl: string;
+    posterUrl: string;
+    posterAlt: string;
+    durationLabel: string;
+    highlights: string[];
+    ctaLabel: string;
+    ctaHref: string;
+    layout?: 'split-right' | 'split-left' | 'centered';
   };
 }
 
@@ -132,7 +208,20 @@ export interface StatsBlock extends BlockBase {
   type: 'stats';
   props: {
     heading: string;
+    layout?: 'strip' | 'cards' | 'grid-2';
     items: StatItem[];
+  };
+}
+
+export interface TeamBlock extends BlockBase {
+  type: 'team';
+  props: {
+    eyebrow: string;
+    heading: string;
+    intro: string;
+    columns: 2 | 3 | 4;
+    layout?: 'cards' | 'horizontal' | 'minimal';
+    members: TeamMember[];
   };
 }
 
@@ -142,13 +231,44 @@ export interface PricingBlock extends BlockBase {
     eyebrow: string;
     heading: string;
     intro: string;
+    layout?: 'cards' | 'rows' | 'compact';
     tiers: PricingTier[];
+  };
+}
+
+export interface CalculatorBlock extends BlockBase {
+  type: 'calculator';
+  props: {
+    eyebrow: string;
+    heading: string;
+    intro: string;
+    layout?: 'split' | 'split-reverse' | 'stacked';
+    currencySymbol: string;
+    primaryInputLabel: string;
+    primaryMin: number;
+    primaryMax: number;
+    primaryStep: number;
+    primaryDefault: number;
+    primaryUnitLabel: string;
+    secondaryInputLabel: string;
+    secondaryMin: number;
+    secondaryMax: number;
+    secondaryStep: number;
+    secondaryDefault: number;
+    secondaryUnitLabel: string;
+    hourlyRate: number;
+    monthlyPlatformCostPerPrimary: number;
+    baseMonthlyFee: number;
+    roiHeadlineLabel: string;
+    ctaLabel: string;
+    ctaHref: string;
   };
 }
 
 export interface TestimonialBlock extends BlockBase {
   type: 'testimonial';
   props: {
+    layout?: 'editorial' | 'centered' | 'card';
     quote: string;
     authorName: string;
     authorRole: string;
@@ -162,6 +282,7 @@ export interface FaqBlock extends BlockBase {
   props: {
     eyebrow: string;
     heading: string;
+    layout?: 'single' | 'split' | 'grid-2';
     items: FaqItem[];
   };
 }
@@ -169,6 +290,7 @@ export interface FaqBlock extends BlockBase {
 export interface CtaBlock extends BlockBase {
   type: 'cta';
   props: {
+    layout?: 'panel' | 'centered' | 'minimal';
     headline: string;
     description: string;
     primaryCtaLabel: string;
@@ -176,6 +298,34 @@ export interface CtaBlock extends BlockBase {
     secondaryCtaLabel: string;
     secondaryCtaHref: string;
   };
+}
+
+export type ContactFieldType =
+  | 'text'
+  | 'email'
+  | 'tel'
+  | 'select'
+  | 'textarea'
+  | 'checkbox';
+
+export interface ContactFormField {
+  id: string;
+  name: string;
+  label: string;
+  type: ContactFieldType;
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+  step?: 1 | 2;
+}
+
+export interface ContactBookingConfig {
+  durationLabel?: string;
+  timezone?: string;
+  slots?: string[];
+  stepHeading?: string;
+  externalBookingUrl?: string;
+  externalBookingLabel?: string;
 }
 
 export interface ContactBlock extends BlockBase {
@@ -187,6 +337,12 @@ export interface ContactBlock extends BlockBase {
     email: string;
     location: string;
     submitLabel: string;
+    layout?: 'split' | 'split-reverse' | 'centered';
+    formMode?: 'standard' | 'multistep' | 'booking';
+    customFields?: ContactFormField[];
+    booking?: ContactBookingConfig;
+    successMessage?: string;
+    redirectUrl?: string;
   };
 }
 
@@ -197,16 +353,22 @@ export interface FooterBlock extends BlockBase {
     summary: string;
     columns: FooterColumn[];
     copyright: string;
+    layout?: 'columns' | 'centered';
   };
 }
 
 export type SiteBlock =
   | NavbarBlock
   | HeroBlock
+  | LogoCloudBlock
   | FeaturesBlock
   | ShowcaseBlock
+  | PortfolioBlock
+  | VideoBlock
   | StatsBlock
+  | TeamBlock
   | PricingBlock
+  | CalculatorBlock
   | TestimonialBlock
   | FaqBlock
   | CtaBlock
@@ -235,6 +397,21 @@ export interface SiteMarketingConfig {
   savedKit?: MarketingAdKit | null;
 }
 
+export interface SiteAutomationsConfig {
+  webhookUrl?: string;
+  webhookFormat?: 'json' | 'slack' | 'discord';
+  notifyEmail?: string;
+  autoResponderNote?: string;
+}
+
+export interface SitePage {
+  id: string;
+  name: string;
+  path: string;
+  blocks: SiteBlock[];
+  seo?: SiteSeo;
+}
+
 export interface SiteProject {
   id: string;
   clientName?: string;
@@ -243,8 +420,11 @@ export interface SiteProject {
   description: string;
   theme: SiteTheme;
   blocks: SiteBlock[];
+  pages?: SitePage[];
+  activePageId?: string;
   seo?: SiteSeo;
   marketing?: SiteMarketingConfig;
+  automations?: SiteAutomationsConfig;
   createdAt?: string;
   updatedAt: string;
   lastDeployedSlug?: string;
@@ -259,6 +439,7 @@ export interface ExportOptions {
   useCssVariables: boolean;
   formEndpoint?: string;
   trackEndpoint?: string;
+  previewNavigationBridge?: boolean;
 }
 
 export interface DeployedSiteRecord {
@@ -269,6 +450,8 @@ export interface DeployedSiteRecord {
   description: string;
   deployedAt: string;
   blockCount: number;
+  pagesCount?: number;
+  pagePaths?: string[];
   url: string;
   customDomain?: string | null;
   domainVerified?: boolean;
@@ -299,12 +482,28 @@ export interface DomainVerificationResult {
   };
 }
 
+export interface LeadBookingSlot {
+  date: string;
+  time: string;
+  timezone?: string;
+  duration?: string;
+}
+
+export type LeadPipelineStatus = 'new' | 'contacted' | 'booked' | 'archived';
+
 export interface LeadSubmission {
   id: string;
   siteSlug: string;
   name: string;
   email: string;
+  phone?: string;
+  company?: string;
   message: string;
+  customData?: Record<string, string | boolean>;
+  bookingSlot?: LeadBookingSlot | null;
+  status?: LeadPipelineStatus;
+  webhookStatus?: 'none' | 'delivered' | 'failed';
+  webhookResponseCode?: number | null;
   submittedAt: string;
 }
 
@@ -315,17 +514,36 @@ export interface AnalyticsDailyPoint {
   leads: number;
 }
 
+export interface SeoAuditCheck {
+  id: string;
+  label: string;
+  status: 'pass' | 'warn' | 'fail';
+  points: number;
+  maxPoints: number;
+  detail: string;
+  actionTarget?: 'seo' | 'marketing' | 'builder' | 'deploy';
+}
+
 export interface SitePerformanceMetric {
   slug: string;
   name: string;
   clientName: string;
   url: string;
+  customDomain?: string | null;
+  domainVerified?: boolean;
   blockCount: number;
   deployedAt: string;
   views: number;
   clicks: number;
   leads: number;
   conversionRate: number;
+  ctr: number;
+  seoScore: number;
+  htmlSizeKb: number;
+  wordCount: number;
+  headingCount: number;
+  imageCount: number;
+  seoChecks: SeoAuditCheck[];
 }
 
 export interface AnalyticsEventItem {
@@ -344,6 +562,11 @@ export interface AnalyticsPayload {
     totalClicks: number;
     totalLeads: number;
     conversionRate: number;
+    ctr: number;
+    avgSeoScore: number;
+    prevViews: number;
+    prevClicks: number;
+    prevLeads: number;
     publishedSitesCount: number;
     savedProjectsCount: number;
   };

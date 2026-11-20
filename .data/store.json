@@ -1,0 +1,106 @@
+{
+  "projects": {},
+  "deployments": {},
+  "leads": [],
+  "events": [
+    {
+      "id": "evt_mwoi8xn5_2n5jq",
+      "siteSlug": "smoke-test-1795150482996",
+      "eventType": "form_submit",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "Consultation Booked",
+      "createdAt": "2026-11-20T04:54:43.025Z"
+    },
+    {
+      "id": "evt_mwohps38_degmp",
+      "siteSlug": "smoke-layouts-1795149589310",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/",
+      "createdAt": "2026-11-20T04:39:49.364Z"
+    },
+    {
+      "id": "evt_mwoha61u_kmmcy",
+      "siteSlug": "smoke-new-blocks-mwoha61b",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/",
+      "createdAt": "2026-11-20T04:27:40.962Z"
+    },
+    {
+      "id": "evt_mwogmqfy_f8mxb",
+      "siteSlug": "af-smoke-multipage",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/about",
+      "createdAt": "2026-11-20T04:09:27.646Z"
+    },
+    {
+      "id": "evt_mwogmqfr_4hlq4",
+      "siteSlug": "af-smoke-multipage",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/",
+      "createdAt": "2026-11-20T04:09:27.639Z"
+    }
+  ],
+  "marketingOrders": [
+    {
+      "id": "mkt_cgtk84a",
+      "siteSlug": "nordic-practice",
+      "siteName": "Nordic Practice — Architecture Studio",
+      "clientName": "Internal Studio",
+      "customerEmail": "i@x.com",
+      "packageId": "social_launch",
+      "packageName": "Paid Social Launch",
+      "billingType": "monthly",
+      "adBudgetUsd": 300,
+      "serviceFeeUsd": 299,
+      "totalUsd": 599,
+      "channels": [
+        "Google Search",
+        "Meta (Instagram & Facebook)"
+      ],
+      "targetAudience": "",
+      "campaignGoal": "Leads & Inquiries",
+      "utmCampaign": "nordic-practice-launch",
+      "status": "pending_payment",
+      "paymentProvider": "invoice",
+      "stripeSessionId": null,
+      "generatedKit": null,
+      "createdAt": "2026-11-20T03:34:17.136Z",
+      "updatedAt": "2026-11-20T03:34:17.136Z"
+    },
+    {
+      "id": "mkt_no38j4a",
+      "siteSlug": "nordic-practice",
+      "siteName": "Nordic Practice — Architecture Studio",
+      "clientName": "Internal Studio",
+      "customerEmail": "i@x.com",
+      "packageId": "social_launch",
+      "packageName": "Paid Social Launch",
+      "billingType": "monthly",
+      "adBudgetUsd": 300,
+      "serviceFeeUsd": 299,
+      "totalUsd": 599,
+      "channels": [
+        "Google Search",
+        "Meta (Instagram & Facebook)"
+      ],
+      "targetAudience": "",
+      "campaignGoal": "Leads & Inquiries",
+      "utmCampaign": "nordic-practice-launch",
+      "status": "pending_payment",
+      "paymentProvider": "invoice",
+      "stripeSessionId": null,
+      "generatedKit": null,
+      "createdAt": "2026-11-20T03:18:34.373Z",
+      "updatedAt": "2026-11-20T03:18:34.373Z"
+    }
+  ]
+}
