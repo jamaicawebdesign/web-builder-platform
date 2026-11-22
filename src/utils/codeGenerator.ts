@@ -1466,10 +1466,11 @@ a {
 .${p}btn-primary {
   background-color: ${v(`--${p}primary`, primary)};
   color: ${v(`--${p}primary-ink`, accentText)};
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, ${v(`--${p}primary`, primary)} 65%, transparent);
 }
 
 .${p}btn-primary:hover {
-  opacity: 0.93;
+  opacity: 0.94;
 }
 
 .${p}btn-secondary {
@@ -1480,9 +1481,10 @@ a {
 
 .${p}bg-contrast .${p}btn-secondary,
 .${p}btn-secondary-on-dark {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.1);
   color: #FFFFFF;
-  border-color: rgba(255, 255, 255, 0.34);
+  border-color: rgba(255, 255, 255, 0.36);
+  backdrop-filter: blur(8px);
 }
 
 .${p}btn-secondary:hover,
@@ -1495,6 +1497,12 @@ a {
 }
 
 /* Hero Layouts */
+.${p}hero:not(.${p}hero-banner-wrap) {
+  background-image:
+    radial-gradient(circle at 86% 14%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 11%, transparent) 0%, transparent 48%),
+    radial-gradient(circle at 12% 92%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 6%, transparent) 0%, transparent 45%);
+}
+
 .${p}hero-split {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -1529,11 +1537,12 @@ a {
   position: relative;
   border-radius: ${v(`--${p}radius`, radius)};
   overflow: hidden;
-  min-height: 520px;
+  min-height: 540px;
   display: flex;
   align-items: flex-end;
   padding: 56px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 28px 60px -28px rgba(15, 23, 42, 0.45);
 }
 
 .${p}hero-banner-bg {
@@ -1547,7 +1556,7 @@ a {
 .${p}hero-banner-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, rgba(13, 15, 20, 0.92) 0%, rgba(13, 15, 20, 0.74) 54%, rgba(13, 15, 20, 0.35) 100%);
+  background: linear-gradient(104deg, rgba(13, 15, 20, 0.94) 0%, rgba(13, 15, 20, 0.72) 52%, rgba(13, 15, 20, 0.24) 100%);
 }
 
 .${p}hero-banner-content {
@@ -1565,12 +1574,12 @@ a {
   border-radius: ${v(`--${p}radius`, radius)};
   overflow: hidden;
   border: 1px solid ${v(`--${p}border`, border)};
-  box-shadow: 0 24px 48px -24px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 28px 56px -24px rgba(15, 23, 42, 0.25);
 }
 
 .${p}bg-contrast .${p}media-frame {
   border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 28px 56px -24px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 32px 64px -24px rgba(0, 0, 0, 0.6);
 }
 
 .${p}media-img {
@@ -1646,7 +1655,8 @@ a {
   border: 1px solid ${v(`--${p}border`, border)};
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}bg`, bg)};
-  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 30px -18px rgba(15, 23, 42, 0.11);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .${p}card:hover {
@@ -1656,6 +1666,7 @@ a {
 .${p}bg-contrast .${p}card {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
 }
 
 .${p}card-meta {
@@ -1712,7 +1723,7 @@ a {
 
 .${p}check-list li {
   position: relative;
-  padding-left: 26px;
+  padding-left: 32px;
   line-height: 1.55;
 }
 
@@ -1720,12 +1731,21 @@ a {
   content: "✓";
   position: absolute;
   left: 0;
-  top: 0;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
   font-weight: 700;
+  background-color: color-mix(in srgb, ${v(`--${p}primary`, primary)} 13%, transparent);
   color: ${v(`--${p}primary`, primary)};
 }
 
 .${p}bg-contrast .${p}check-list li::before {
+  background-color: rgba(255, 255, 255, 0.15);
   color: #FFFFFF;
 }
 
@@ -1744,17 +1764,20 @@ a {
   border: 1px solid ${v(`--${p}border`, border)};
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}bg`, bg)};
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px -18px rgba(15, 23, 42, 0.1);
 }
 
 .${p}bg-contrast .${p}pricing-card {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
 }
 
 .${p}pricing-featured {
   border-color: ${v(`--${p}primary`, primary)};
   border-top: 3px solid ${v(`--${p}primary`, primary)};
-  box-shadow: 0 20px 44px -24px rgba(15, 23, 42, 0.22);
+  background-image: radial-gradient(circle at 100% 0%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 10%, transparent), transparent 55%);
+  box-shadow: 0 24px 48px -22px color-mix(in srgb, ${v(`--${p}primary`, primary)} 28%, rgba(15, 23, 42, 0.22));
 }
 
 .${p}pricing-kicker {
@@ -1813,15 +1836,29 @@ a {
 
 .${p}pricing-list li {
   position: relative;
-  padding-left: 24px;
+  padding-left: 28px;
 }
 
 .${p}pricing-list li::before {
   content: "✓";
   position: absolute;
   left: 0;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
   font-weight: 700;
+  background-color: color-mix(in srgb, ${v(`--${p}primary`, primary)} 13%, transparent);
   color: ${v(`--${p}primary`, primary)};
+}
+
+.${p}bg-contrast .${p}pricing-list li::before {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
 }
 
 /* Testimonial */
@@ -1935,14 +1972,18 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 32px;
-  padding: 48px;
+  padding: 52px;
   border-radius: ${v(`--${p}radius`, radius)};
   border: 1px solid ${v(`--${p}border`, border)};
+  background-image: radial-gradient(circle at 92% 18%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 12%, transparent) 0%, transparent 54%);
+  box-shadow: 0 20px 48px -28px rgba(15, 23, 42, 0.14);
 }
 
 .${p}bg-contrast .${p}cta-panel {
   border-color: rgba(255, 255, 255, 0.16);
   background-color: rgba(255, 255, 255, 0.04);
+  background-image: radial-gradient(circle at 92% 18%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 22%, transparent) 0%, transparent 56%);
+  box-shadow: none;
 }
 
 .${p}cta-copy {
@@ -2410,6 +2451,7 @@ a {
   border: 1px solid ${v(`--${p}border`, border)};
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}bg`, bg)};
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 30px -18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
   transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -2424,6 +2466,7 @@ a {
 .${p}bg-contrast .${p}team-card {
   border-color: rgba(255, 255, 255, 0.16);
   background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: none;
 }
 
 .${p}case-media {
@@ -2758,6 +2801,7 @@ a {
   border: 1px solid ${v(`--${p}border`, border)};
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}bg`, bg)};
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 30px -18px rgba(15, 23, 42, 0.11);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2767,6 +2811,7 @@ a {
 .${p}bg-contrast .${p}calc-controls {
   border-color: rgba(255, 255, 255, 0.16);
   background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: none;
 }
 
 .${p}calc-slider-group {
@@ -2832,6 +2877,8 @@ a {
   border-top-width: 3px;
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}surface`, surface)};
+  background-image: radial-gradient(circle at 100% 0%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 10%, transparent), transparent 56%);
+  box-shadow: 0 22px 46px -22px color-mix(in srgb, ${v(`--${p}primary`, primary)} 26%, rgba(15, 23, 42, 0.2));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2840,6 +2887,7 @@ a {
 
 .${p}bg-contrast .${p}calc-output {
   background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 
 .${p}calc-kicker {
@@ -2906,6 +2954,7 @@ a {
   border: 1px solid ${v(`--${p}border`, border)};
   border-radius: ${v(`--${p}radius`, radius)};
   background-color: ${v(`--${p}bg`, bg)};
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 26px -18px rgba(15, 23, 42, 0.1);
   padding: 24px;
 }
 
@@ -2913,6 +2962,7 @@ a {
 .${p}bg-contrast .${p}stats-grid-2 .${p}stat-item {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
 }
 
 .${p}bento-grid {
@@ -2928,6 +2978,7 @@ a {
 .${p}bento-featured {
   border-color: ${v(`--${p}primary`, primary)};
   background-color: ${v(`--${p}surface`, surface)};
+  background-image: radial-gradient(circle at 100% 0%, color-mix(in srgb, ${v(`--${p}primary`, primary)} 10%, transparent), transparent 56%);
 }
 
 .${p}bg-contrast .${p}bento-featured {

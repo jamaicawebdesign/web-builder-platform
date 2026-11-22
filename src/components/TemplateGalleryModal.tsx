@@ -418,16 +418,45 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                       heroBlock?.backgroundVariant === 'contrast' ||
                       heroProps?.layout === 'banner';
 
+                    const portfolioBlock = tpl.blocks.find((b) => b.type === 'portfolio');
+                    const statsBlock = tpl.blocks.find((b) => b.type === 'stats');
+                    const featuresBlock = tpl.blocks.find((b) => b.type === 'features');
+                    const logoBlock = tpl.blocks.find((b) => b.type === 'logocloud');
+                    const teamBlock = tpl.blocks.find((b) => b.type === 'team');
+                    const videoBlock = tpl.blocks.find((b) => b.type === 'video');
+                    const calcBlock = tpl.blocks.find((b) => b.type === 'calculator');
+                    const contactBlock = tpl.blocks.find((b) => b.type === 'contact');
+
+                    const signatureHighlights: string[] = [];
+                    if (portfolioBlock) signatureHighlights.push('Portfolio');
+                    if (videoBlock) signatureHighlights.push('Video');
+                    if (calcBlock) signatureHighlights.push('ROI Calc');
+                    if (teamBlock) signatureHighlights.push('Team');
+                    if (logoBlock) signatureHighlights.push('Logo Strip');
+                    if (
+                      contactBlock &&
+                      contactBlock.type === 'contact' &&
+                      contactBlock.props.formMode === 'booking'
+                    ) {
+                      signatureHighlights.push('Booking');
+                    }
+
+                    const lowerStripBg =
+                      statsBlock?.backgroundVariant === 'contrast'
+                        ? tpl.theme.contrastBgColor
+                        : tpl.theme.surfaceColor;
+                    const isDarkStrip = statsBlock?.backgroundVariant === 'contrast';
+
                     return (
                       <div
                         key={tpl.id}
-                        className={`bg-white rounded-xl border overflow-hidden flex flex-col transition-all ${
+                        className={`bg-white rounded-xl border overflow-hidden flex flex-col transition-all duration-200 ${
                           isCurrent
-                            ? 'border-[#1D4ED8] ring-2 ring-[#1D4ED8]/25 shadow-sm'
-                            : 'border-[#DAD4C6] hover:border-[#13151A] hover:shadow-sm'
+                            ? 'border-[#1D4ED8] ring-2 ring-[#1D4ED8]/25 shadow-md'
+                            : 'border-[#DAD4C6] hover:border-[#13151A] hover:shadow-md hover:-translate-y-0.5'
                         }`}
                       >
-                        {/* Architectural Mini-Website Preview Stage (Click to Launch Live Demo) */}
+                        {/* Architectural Multi-Band Mini-Website Preview Stage */}
                         <button
                           type="button"
                           onClick={() => setPreviewTemplate(tpl)}
@@ -437,11 +466,14 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                               ? tpl.theme.contrastBgColor
                               : tpl.theme.backgroundColor,
                             color: isDarkHero ? '#FFFFFF' : tpl.theme.textColor,
+                            backgroundImage: !isDarkHero
+                              ? `radial-gradient(circle at 88% 18%, color-mix(in srgb, ${tpl.theme.primaryColor} 14%, transparent), transparent 52%)`
+                              : undefined,
                           }}
                         >
                           {/* Mini Navbar */}
                           <div
-                            className="px-3.5 py-2 flex items-center justify-between gap-2 shrink-0 border-b"
+                            className="px-3.5 py-1.5 flex items-center justify-between gap-2 shrink-0 border-b"
                             style={{
                               backgroundColor: isDarkNav
                                 ? tpl.theme.contrastBgColor
@@ -453,7 +485,7 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                             }}
                           >
                             <span
-                              className="text-[11px] font-bold tracking-tight truncate"
+                              className="text-[10px] font-bold tracking-tight truncate"
                               style={{ fontFamily: tpl.theme.displayFont }}
                             >
                               {navBlock && navBlock.type === 'navbar'
@@ -461,11 +493,16 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                                 : tpl.name}
                             </span>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="hidden sm:inline text-[9px] opacity-75">
-                                Work · Approach
+                              <span className="hidden sm:inline text-[8px] opacity-70">
+                                {navBlock && navBlock.type === 'navbar'
+                                  ? navBlock.props.links
+                                      .slice(0, 2)
+                                      .map((l) => l.label)
+                                      .join(' · ')
+                                  : 'Work · Studio'}
                               </span>
                               <span
-                                className="px-1.5 py-0.5 text-[9px] font-semibold"
+                                className="px-1.5 py-0.5 text-[8px] font-semibold"
                                 style={{
                                   backgroundColor: tpl.theme.primaryColor,
                                   color: tpl.theme.accentTextColor,
@@ -479,9 +516,9 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Mini Hero Composition matching actual template layout */}
+                          {/* Mini Hero Band */}
                           {heroProps?.layout === 'banner' && heroProps.imageUrl ? (
-                            <div className="relative flex-1 p-3.5 flex flex-col justify-end overflow-hidden">
+                            <div className="relative flex-1 px-3.5 py-2.5 flex flex-col justify-end overflow-hidden min-h-0">
                               <img
                                 src={heroProps.imageUrl}
                                 alt={tpl.name}
@@ -492,18 +529,18 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                                 className="absolute inset-0"
                                 style={{
                                   background:
-                                    'linear-gradient(100deg, rgba(13,15,20,0.9) 0%, rgba(13,15,20,0.68) 58%, rgba(13,15,20,0.28) 100%)',
+                                    'linear-gradient(104deg, rgba(13,15,20,0.92) 0%, rgba(13,15,20,0.68) 56%, rgba(13,15,20,0.25) 100%)',
                                 }}
                               />
-                              <div className="relative z-10 max-w-[82%] space-y-1.5 text-white">
+                              <div className="relative z-10 max-w-[85%] space-y-1 text-white">
                                 <div
-                                  className="text-sm font-bold leading-tight line-clamp-2"
+                                  className="text-[13px] font-bold leading-tight line-clamp-2"
                                   style={{ fontFamily: tpl.theme.displayFont }}
                                 >
                                   {heroProps.headline}
                                 </div>
                                 <span
-                                  className="inline-block px-2 py-0.5 text-[9px] font-semibold"
+                                  className="inline-block px-2 py-0.5 text-[8px] font-semibold"
                                   style={{
                                     backgroundColor: tpl.theme.primaryColor,
                                     color: tpl.theme.accentTextColor,
@@ -515,16 +552,16 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                               </div>
                             </div>
                           ) : heroProps?.layout === 'centered' ? (
-                            <div className="flex-1 p-3.5 pb-0 flex flex-col items-center justify-between text-center overflow-hidden">
-                              <div className="space-y-1 max-w-[90%]">
+                            <div className="flex-1 px-3.5 pt-2.5 pb-0 flex flex-col items-center justify-between text-center overflow-hidden min-h-0">
+                              <div className="space-y-1 max-w-[92%]">
                                 <div
-                                  className="text-xs sm:text-[13px] font-bold leading-tight line-clamp-2"
+                                  className="text-[12px] font-bold leading-tight line-clamp-2"
                                   style={{ fontFamily: tpl.theme.displayFont }}
                                 >
                                   {heroProps.headline}
                                 </div>
                                 <span
-                                  className="inline-block px-2 py-0.5 text-[9px] font-semibold"
+                                  className="inline-block px-2 py-0.5 text-[8px] font-semibold"
                                   style={{
                                     backgroundColor: tpl.theme.primaryColor,
                                     color: tpl.theme.accentTextColor,
@@ -538,7 +575,7 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                                 <img
                                   src={heroProps.imageUrl}
                                   alt={tpl.name}
-                                  className="w-[82%] h-20 object-cover border-t border-x mt-2 transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                                  className="w-[82%] h-14 object-cover border-t border-x mt-1.5 transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                                   style={{
                                     borderColor: tpl.theme.borderColor,
                                     borderTopLeftRadius: tpl.theme.radius,
@@ -548,16 +585,23 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                               )}
                             </div>
                           ) : (
-                            <div className="flex-1 p-3.5 grid grid-cols-12 gap-3 items-center">
-                              <div className="col-span-7 space-y-1.5 min-w-0">
+                            <div className="flex-1 px-3.5 py-2.5 grid grid-cols-12 gap-2.5 items-center min-h-0">
+                              <div
+                                className={`col-span-7 space-y-1 min-w-0 ${
+                                  heroProps?.layout === 'split-left' ? 'order-2' : ''
+                                }`}
+                              >
                                 <div
-                                  className="text-[13px] font-bold leading-tight line-clamp-3"
+                                  className="text-[12px] font-bold leading-tight line-clamp-2"
                                   style={{ fontFamily: tpl.theme.displayFont }}
                                 >
                                   {heroProps?.headline || tpl.name}
                                 </div>
+                                <p className="text-[8.5px] leading-snug opacity-75 line-clamp-2">
+                                  {heroProps?.subtitle || tpl.description}
+                                </p>
                                 <span
-                                  className="inline-block px-2 py-0.5 text-[9px] font-semibold"
+                                  className="inline-block px-2 py-0.5 text-[8px] font-semibold"
                                   style={{
                                     backgroundColor: tpl.theme.primaryColor,
                                     color: tpl.theme.accentTextColor,
@@ -568,7 +612,12 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                                 </span>
                               </div>
                               {heroProps?.imageUrl && (
-                                <div className="col-span-5 overflow-hidden" style={{ borderRadius: tpl.theme.radius }}>
+                                <div
+                                  className={`col-span-5 overflow-hidden shadow-sm ${
+                                    heroProps?.layout === 'split-left' ? 'order-1' : ''
+                                  }`}
+                                  style={{ borderRadius: tpl.theme.radius }}
+                                >
                                   <img
                                     src={heroProps.imageUrl}
                                     alt={tpl.name}
@@ -584,6 +633,102 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                               )}
                             </div>
                           )}
+
+                          {/* Miniature Second-Band Strip (Real Proof / Portfolio / Metrics) */}
+                          <div
+                            className="px-3.5 py-2 border-t shrink-0"
+                            style={{
+                              backgroundColor: lowerStripBg,
+                              color: isDarkStrip ? '#FFFFFF' : tpl.theme.textColor,
+                              borderColor: isDarkStrip
+                                ? 'rgba(255,255,255,0.14)'
+                                : tpl.theme.borderColor,
+                            }}
+                          >
+                            {portfolioBlock && portfolioBlock.type === 'portfolio' ? (
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {portfolioBlock.props.items.slice(0, 3).map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-1.5 px-1.5 py-1 border min-w-0"
+                                    style={{
+                                      borderColor: tpl.theme.borderColor,
+                                      backgroundColor: tpl.theme.backgroundColor,
+                                      color: tpl.theme.textColor,
+                                      borderRadius: tpl.theme.radius,
+                                    }}
+                                  >
+                                    <img
+                                      src={item.imageUrl}
+                                      alt=""
+                                      className="w-5 h-5 object-cover shrink-0"
+                                      style={{ borderRadius: '3px' }}
+                                    />
+                                    <span className="text-[7.5px] font-semibold truncate">
+                                      {item.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : statsBlock && statsBlock.type === 'stats' ? (
+                              <div className="grid grid-cols-3 gap-2">
+                                {statsBlock.props.items.slice(0, 3).map((stat, idx) => (
+                                  <div key={idx} className="min-w-0">
+                                    <div
+                                      className="text-[10px] font-bold tabular-nums leading-none truncate"
+                                      style={{
+                                        fontFamily: tpl.theme.displayFont,
+                                        color: isDarkStrip ? '#FFFFFF' : tpl.theme.primaryColor,
+                                      }}
+                                    >
+                                      {stat.value}
+                                    </div>
+                                    <div className="text-[7px] opacity-75 truncate mt-0.5">
+                                      {stat.label}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : featuresBlock && featuresBlock.type === 'features' ? (
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {featuresBlock.props.items.slice(0, 3).map((feat, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="px-1.5 py-1 border min-w-0"
+                                    style={{
+                                      borderColor: tpl.theme.borderColor,
+                                      backgroundColor: tpl.theme.backgroundColor,
+                                      color: tpl.theme.textColor,
+                                      borderRadius: tpl.theme.radius,
+                                    }}
+                                  >
+                                    <div className="text-[7.5px] font-semibold truncate">
+                                      {feat.title}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : teamBlock && teamBlock.type === 'team' ? (
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {teamBlock.props.members.slice(0, 3).map((m, idx) => (
+                                  <div key={idx} className="flex items-center gap-1 min-w-0">
+                                    <img
+                                      src={m.imageUrl}
+                                      alt=""
+                                      className="w-4 h-4 rounded-full object-cover object-top shrink-0"
+                                    />
+                                    <span className="text-[7.5px] font-medium truncate">
+                                      {m.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-[7.5px] font-medium opacity-75 truncate">
+                                {tpl.blocks.length} bespoke sections · {tpl.theme.displayFont}
+                              </div>
+                            )}
+                          </div>
 
                           {/* Hover Demo Overlay */}
                           <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center">
@@ -631,6 +776,11 @@ export const TemplateGalleryModal: React.FC<TemplateGalleryModalProps> = ({
                                 </>
                               )}
                             </div>
+                            {signatureHighlights.length > 0 && (
+                              <p className="text-[11px] font-medium text-[#1D4ED8] truncate">
+                                Includes {signatureHighlights.slice(0, 4).join(' · ')}
+                              </p>
+                            )}
                             <p className="text-xs text-black leading-relaxed pt-0.5">
                               {tpl.description}
                             </p>

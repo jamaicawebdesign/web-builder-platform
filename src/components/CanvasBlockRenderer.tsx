@@ -358,17 +358,27 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
 
       {block.type === 'hero' && (
         <section
-          className={`px-7 ${enterAnimClass}`}
-          style={{ paddingBlock: `${padY}px`, ...enterDelayStyle }}
+          className={`px-7 relative overflow-hidden ${enterAnimClass}`}
+          style={{
+            paddingBlock: `${padY}px`,
+            backgroundImage:
+              block.props.layout !== 'banner'
+                ? block.backgroundVariant === 'contrast'
+                  ? `radial-gradient(ellipse 68% 58% at 88% 8%, color-mix(in srgb, ${theme.primaryColor} 22%, transparent), transparent 72%)`
+                  : `radial-gradient(ellipse 68% 58% at 88% 8%, color-mix(in srgb, ${theme.primaryColor} 10%, transparent), transparent 70%)`
+                : undefined,
+            ...enterDelayStyle,
+          }}
         >
           {block.props.layout === 'banner' && block.props.imageUrl ? (
             <div
               className="group/media max-w-[1160px] mx-auto relative overflow-hidden flex items-end border"
               style={{
-                minHeight: isCompactViewport ? '380px' : '480px',
-                padding: isCompactViewport ? '28px' : '52px',
+                minHeight: isCompactViewport ? '400px' : '520px',
+                padding: isCompactViewport ? '28px' : '56px',
                 borderRadius: theme.radius,
-                borderColor: 'rgba(255,255,255,0.14)',
+                borderColor: 'rgba(255,255,255,0.16)',
+                boxShadow: '0 32px 64px -26px rgba(0,0,0,0.48)',
               }}
             >
               <img
@@ -386,14 +396,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                 className="absolute inset-0"
                 style={{
                   background:
-                    'linear-gradient(100deg, rgba(13,15,20,0.92) 0%, rgba(13,15,20,0.74) 54%, rgba(13,15,20,0.35) 100%)',
+                    'linear-gradient(104deg, rgba(10,12,17,0.92) 0%, rgba(10,12,17,0.68) 48%, rgba(10,12,17,0.22) 100%)',
                 }}
               />
               <div className="relative z-10 max-w-2xl text-white">
                 {block.props.kicker && (
-                  <p className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-wide mb-3 text-white/90">
+                  <p className="inline-flex items-center gap-2.5 text-sm font-semibold tracking-wide mb-3.5 text-white/90">
                     <span
-                      className="w-5 h-0.5 shrink-0"
+                      className="w-6 h-0.5 shrink-0"
                       style={{ backgroundColor: theme.primaryColor }}
                     />
                     <span>{block.props.kicker}</span>
@@ -401,13 +411,13 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                 )}
                 <h1
                   className={`font-bold tracking-tight leading-[1.06] mb-5 [text-wrap:balance] ${
-                    isCompactViewport ? 'text-4xl' : 'text-[2.65rem] lg:text-[3.35rem]'
+                    isCompactViewport ? 'text-4xl' : 'text-[2.65rem] lg:text-[3.45rem]'
                   }`}
                   style={displayStyle}
                 >
                   {block.props.headline}
                 </h1>
-                <p className="text-lg leading-relaxed mb-7 max-w-[54ch] text-white/90">
+                <p className="text-lg leading-relaxed mb-8 max-w-[54ch] text-white/90">
                   {block.props.subtitle}
                 </p>
                 <div className="flex flex-wrap gap-3">
@@ -417,15 +427,16 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       backgroundColor: theme.primaryColor,
                       color: theme.accentTextColor,
                       borderRadius: theme.radius,
+                      boxShadow: `0 12px 28px -10px color-mix(in srgb, ${theme.primaryColor} 70%, transparent)`,
                     }}
                   >
                     {block.props.primaryCtaLabel}
                   </span>
                   {block.props.secondaryCtaLabel && (
                     <span
-                      className="px-6 py-3 text-base font-semibold border whitespace-nowrap text-white"
+                      className="px-6 py-3 text-base font-semibold border whitespace-nowrap text-white backdrop-blur-xs"
                       style={{
-                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        backgroundColor: 'rgba(255,255,255,0.1)',
                         borderColor: 'rgba(255,255,255,0.34)',
                         borderRadius: theme.radius,
                       }}
@@ -465,7 +476,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     style={{ color: mutedColor }}
                   >
                     <span
-                      className="w-5 h-0.5 shrink-0"
+                      className="w-6 h-0.5 shrink-0"
                       style={{ backgroundColor: theme.primaryColor }}
                     />
                     <span>{block.props.kicker}</span>
@@ -473,14 +484,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                 )}
                 <h1
                   className={`font-bold tracking-tight leading-[1.06] mb-5 [text-wrap:balance] ${
-                    isCompactViewport ? 'text-4xl' : 'text-[2.65rem] lg:text-[3.35rem]'
+                    isCompactViewport ? 'text-4xl' : 'text-[2.65rem] lg:text-[3.45rem]'
                   }`}
                   style={displayStyle}
                 >
                   {block.props.headline}
                 </h1>
                 <p
-                  className="text-lg leading-relaxed mb-7 max-w-[54ch]"
+                  className="text-lg leading-relaxed mb-8 max-w-[54ch]"
                   style={{
                     color: mutedColor,
                     marginInline: block.props.layout === 'centered' ? 'auto' : undefined,
@@ -499,6 +510,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       backgroundColor: theme.primaryColor,
                       color: theme.accentTextColor,
                       borderRadius: theme.radius,
+                      boxShadow: `0 10px 24px -10px color-mix(in srgb, ${theme.primaryColor} 65%, transparent)`,
                     }}
                   >
                     {block.props.primaryCtaLabel}
@@ -509,6 +521,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       style={{
                         borderColor: cardBorder,
                         borderRadius: theme.radius,
+                        backgroundColor:
+                          block.backgroundVariant === 'contrast'
+                            ? 'rgba(255,255,255,0.07)'
+                            : theme.surfaceColor,
                       }}
                     >
                       {block.props.secondaryCtaLabel}
@@ -535,8 +551,8 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       borderRadius: theme.radius,
                       boxShadow:
                         block.backgroundVariant === 'contrast'
-                          ? '0 28px 56px -24px rgba(0,0,0,0.55)'
-                          : '0 24px 48px -24px rgba(15,23,42,0.22)',
+                          ? '0 32px 64px -24px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)'
+                          : '0 2px 6px rgba(15,23,42,0.05), 0 28px 56px -26px rgba(15,23,42,0.25)',
                     }}
                   >
                     <SafeMedia
@@ -780,11 +796,19 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       <div
                         key={i}
                         className={`p-7 border flex flex-col justify-between ${
-                          isWide ? (isNarrowViewport ? 'col-span-2' : 'col-span-2') : ''
+                          isWide ? 'col-span-2' : ''
                         } ${hasMotion ? 'af-hover-lift' : ''}`}
                         style={{
                           borderColor: i === 0 ? theme.primaryColor : cardBorder,
                           borderRadius: theme.radius,
+                          boxShadow:
+                            block.backgroundVariant !== 'contrast'
+                              ? '0 1px 2px rgba(15,23,42,0.04), 0 12px 26px -18px rgba(15,23,42,0.12)'
+                              : undefined,
+                          backgroundImage:
+                            i === 0
+                              ? `radial-gradient(circle at 100% 0%, color-mix(in srgb, ${theme.primaryColor} 12%, transparent), transparent 58%)`
+                              : undefined,
                           backgroundColor:
                             block.backgroundVariant === 'contrast'
                               ? i === 0
@@ -834,6 +858,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       style={{
                         borderColor: cardBorder,
                         borderRadius: theme.radius,
+                        boxShadow:
+                          block.backgroundVariant !== 'contrast'
+                            ? '0 1px 2px rgba(15,23,42,0.04), 0 12px 26px -18px rgba(15,23,42,0.11)'
+                            : undefined,
                         backgroundColor:
                           block.backgroundVariant === 'contrast'
                             ? 'rgba(255,255,255,0.05)'
@@ -927,10 +955,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     style={{ color: mutedColor }}
                   >
                     {block.props.bullets.map((b, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
+                      <li key={i} className="flex items-start gap-3">
                         <span
-                          className="font-bold shrink-0"
+                          className="w-5 h-5 mt-0.5 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                           style={{
+                            backgroundColor:
+                              block.backgroundVariant === 'contrast'
+                                ? 'rgba(255,255,255,0.14)'
+                                : `color-mix(in srgb, ${theme.primaryColor} 12%, transparent)`,
                             color:
                               block.backgroundVariant === 'contrast'
                                 ? '#FFFFFF'
@@ -950,6 +982,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     style={{
                       borderColor: cardBorder,
                       borderRadius: theme.radius,
+                      backgroundColor:
+                        block.backgroundVariant === 'contrast'
+                          ? 'rgba(255,255,255,0.06)'
+                          : theme.backgroundColor,
                     }}
                   >
                     {block.props.ctaLabel}
@@ -974,8 +1010,8 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     borderRadius: theme.radius,
                     boxShadow:
                       block.backgroundVariant === 'contrast'
-                        ? '0 28px 56px -24px rgba(0,0,0,0.55)'
-                        : '0 24px 48px -24px rgba(15,23,42,0.22)',
+                        ? '0 32px 64px -24px rgba(0,0,0,0.6)'
+                        : '0 2px 6px rgba(15,23,42,0.05), 0 28px 56px -26px rgba(15,23,42,0.24)',
                   }}
                 >
                   <SafeMedia
@@ -1126,9 +1162,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                         borderColor: tier.highlighted ? theme.primaryColor : cardBorder,
                         borderTopWidth: tier.highlighted ? '3px' : '1px',
                         boxShadow: tier.highlighted
-                          ? '0 20px 44px -24px rgba(15,23,42,0.22)'
-                          : undefined,
+                          ? `0 24px 48px -22px color-mix(in srgb, ${theme.primaryColor} 28%, rgba(15,23,42,0.2))`
+                          : block.backgroundVariant !== 'contrast'
+                            ? '0 1px 2px rgba(15,23,42,0.04), 0 12px 28px -18px rgba(15,23,42,0.1)'
+                            : undefined,
                         borderRadius: theme.radius,
+                        backgroundImage: tier.highlighted
+                          ? `radial-gradient(circle at 100% 0%, color-mix(in srgb, ${theme.primaryColor} 10%, transparent), transparent 55%)`
+                          : undefined,
                         backgroundColor:
                           block.backgroundVariant === 'contrast'
                             ? 'rgba(255,255,255,0.05)'
@@ -1171,8 +1212,17 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                         {tier.features.map((f, fi) => (
                           <li key={fi} className="flex items-start gap-2.5">
                             <span
-                              className="font-bold shrink-0"
-                              style={{ color: theme.primaryColor }}
+                              className="w-5 h-5 mt-0.5 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
+                              style={{
+                                backgroundColor:
+                                  block.backgroundVariant === 'contrast'
+                                    ? 'rgba(255,255,255,0.14)'
+                                    : `color-mix(in srgb, ${theme.primaryColor} 12%, transparent)`,
+                                color:
+                                  block.backgroundVariant === 'contrast'
+                                    ? '#FFFFFF'
+                                    : theme.primaryColor,
+                              }}
                             >
                               ✓
                             </span>
@@ -1189,6 +1239,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                                 color: theme.accentTextColor,
                                 borderColor: theme.primaryColor,
                                 borderRadius: theme.radius,
+                                boxShadow: `0 10px 22px -10px color-mix(in srgb, ${theme.primaryColor} 65%, transparent)`,
                               }
                             : {
                                 borderColor: cardBorder,
@@ -1425,12 +1476,18 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                 ctaLayout === 'minimal'
                   ? 'py-10 border-y flex flex-wrap items-center justify-between gap-8'
                   : ctaLayout === 'centered'
-                    ? 'p-10 lg:p-14 border flex flex-col items-center text-center gap-6'
-                    : 'p-10 lg:p-12 border flex flex-wrap items-center justify-between gap-8'
+                    ? 'p-10 lg:p-16 border flex flex-col items-center text-center gap-6'
+                    : 'p-10 lg:p-14 border flex flex-wrap items-center justify-between gap-8'
               }`}
               style={{
                 borderColor: cardBorder,
                 borderRadius: ctaLayout === 'minimal' ? '0px' : theme.radius,
+                backgroundImage:
+                  ctaLayout !== 'minimal'
+                    ? `radial-gradient(ellipse 75% 80% at 88% 12%, color-mix(in srgb, ${theme.primaryColor} ${
+                        block.backgroundVariant === 'contrast' ? '22%' : '11%'
+                      }, transparent), transparent 72%)`
+                    : undefined,
                 backgroundColor:
                   ctaLayout !== 'minimal' && block.backgroundVariant === 'contrast'
                     ? 'rgba(255,255,255,0.04)'
@@ -1459,6 +1516,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     backgroundColor: theme.primaryColor,
                     color: theme.accentTextColor,
                     borderRadius: theme.radius,
+                    boxShadow: `0 10px 24px -10px color-mix(in srgb, ${theme.primaryColor} 65%, transparent)`,
                   }}
                 >
                   {block.props.primaryCtaLabel}
@@ -1466,7 +1524,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                 {block.props.secondaryCtaLabel && (
                   <span
                     className="px-6 py-3 text-base font-semibold border whitespace-nowrap"
-                    style={{ borderColor: cardBorder, borderRadius: theme.radius }}
+                    style={{
+                      borderColor: cardBorder,
+                      borderRadius: theme.radius,
+                      backgroundColor:
+                        block.backgroundVariant === 'contrast'
+                          ? 'rgba(255,255,255,0.08)'
+                          : undefined,
+                    }}
                   >
                     {block.props.secondaryCtaLabel}
                   </span>
@@ -2298,6 +2363,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                         style={{
                           borderColor: cardBorder,
                           borderRadius: theme.radius,
+                          boxShadow:
+                            block.backgroundVariant !== 'contrast'
+                              ? '0 1px 2px rgba(15,23,42,0.04), 0 14px 30px -18px rgba(15,23,42,0.12)'
+                              : undefined,
                           backgroundColor:
                             block.backgroundVariant === 'contrast'
                               ? 'rgba(255,255,255,0.05)'
@@ -2526,10 +2595,14 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     style={{ color: mutedColor }}
                   >
                     {block.props.highlights.map((h, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
+                      <li key={i} className="flex items-start gap-3">
                         <span
-                          className="font-bold shrink-0"
+                          className="w-5 h-5 mt-0.5 rounded-full inline-flex items-center justify-center text-[11px] font-bold shrink-0"
                           style={{
+                            backgroundColor:
+                              block.backgroundVariant === 'contrast'
+                                ? 'rgba(255,255,255,0.14)'
+                                : `color-mix(in srgb, ${theme.primaryColor} 13%, transparent)`,
                             color:
                               block.backgroundVariant === 'contrast'
                                 ? '#FFFFFF'
@@ -2741,6 +2814,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                       style={{
                         borderColor: cardBorder,
                         borderRadius: theme.radius,
+                        boxShadow:
+                          block.backgroundVariant !== 'contrast'
+                            ? '0 1px 2px rgba(15,23,42,0.04), 0 12px 28px -18px rgba(15,23,42,0.11)'
+                            : undefined,
                         backgroundColor:
                           block.backgroundVariant === 'contrast'
                             ? 'rgba(255,255,255,0.05)'
@@ -2822,6 +2899,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                           : {
                               borderColor: cardBorder,
                               borderRadius: theme.radius,
+                              boxShadow:
+                                block.backgroundVariant !== 'contrast'
+                                  ? '0 1px 2px rgba(15,23,42,0.04), 0 14px 30px -18px rgba(15,23,42,0.12)'
+                                  : undefined,
                               backgroundColor:
                                 block.backgroundVariant === 'contrast'
                                   ? 'rgba(255,255,255,0.05)'
@@ -2988,6 +3069,10 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                   style={{
                     borderColor: cardBorder,
                     borderRadius: theme.radius,
+                    boxShadow:
+                      block.backgroundVariant !== 'contrast'
+                        ? '0 1px 2px rgba(15,23,42,0.04), 0 14px 30px -18px rgba(15,23,42,0.11)'
+                        : undefined,
                     backgroundColor:
                       block.backgroundVariant === 'contrast'
                         ? 'rgba(255,255,255,0.05)'
@@ -3106,6 +3191,11 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = ({
                     borderColor: theme.primaryColor,
                     borderTopWidth: '3px',
                     borderRadius: theme.radius,
+                    backgroundImage: `radial-gradient(circle at 100% 0%, color-mix(in srgb, ${theme.primaryColor} 10%, transparent), transparent 56%)`,
+                    boxShadow:
+                      block.backgroundVariant !== 'contrast'
+                        ? `0 22px 46px -22px color-mix(in srgb, ${theme.primaryColor} 26%, rgba(15,23,42,0.2))`
+                        : undefined,
                     backgroundColor:
                       block.backgroundVariant === 'contrast'
                         ? 'rgba(255,255,255,0.08)'
