@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Eye,
   FileText,
+  Globe,
   Layers,
   LayoutTemplate,
   Megaphone,
@@ -31,7 +32,7 @@ import {
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { CanvasBlockRenderer } from './components/CanvasBlockRenderer';
 import { CodeHandoffView } from './components/CodeHandoffView';
-import { DeployModal } from './components/DeployModal';
+import { DeployModal, DeployModalTab } from './components/DeployModal';
 import { LeftRail, LeftRailTab } from './components/LeftRail';
 import { MarketingView } from './components/MarketingView';
 import { PageManagerModal } from './components/PageManagerModal';
@@ -165,6 +166,7 @@ export default function App() {
     useCssVariables: true,
   });
   const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployModalTab, setDeployModalTab] = useState<DeployModalTab>('deploy');
   const [pageManagerOpen, setPageManagerOpen] = useState(false);
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [initialPreviewTemplate, setInitialPreviewTemplate] = useState<SiteProject | null>(null);
@@ -1026,7 +1028,10 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setDeployModalOpen(true)}
+            onClick={() => {
+              setDeployModalTab('deploy');
+              setDeployModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1D4ED8] hover:bg-[#163B9E] text-white text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer"
           >
             <Rocket className="w-4 h-4" />
@@ -1061,6 +1066,10 @@ export default function App() {
                 onOpenTemplateGallery={() => {
                   setInitialPreviewTemplate(null);
                   setTemplateGalleryOpen(true);
+                }}
+                onOpenDomains={() => {
+                  setDeployModalTab('domains');
+                  setDeployModalOpen(true);
                 }}
                 onCreateBlank={handleCreateBlank}
                 onSaveProjectSnapshot={() => handleSaveProjectSnapshot()}
@@ -1232,6 +1241,18 @@ export default function App() {
                   >
                     <Layers className="w-3.5 h-3.5 text-[#1D4ED8]" />
                     <span>Pages ({projectPages.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeployModalTab('domains');
+                      setDeployModalOpen(true);
+                    }}
+                    title="Connect custom domains or transfer a domain"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#DAD4C6] bg-white hover:bg-[#FAF9F5] text-xs font-semibold text-black cursor-pointer whitespace-nowrap"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#B45309]" />
+                    <span>Domains</span>
                   </button>
                   <button
                     type="button"
@@ -1746,6 +1767,10 @@ export default function App() {
                   }))
                 }
                 onOpenMarketing={() => setStudioView('marketing')}
+                onOpenDomains={() => {
+                  setDeployModalTab('domains');
+                  setDeployModalOpen(true);
+                }}
                 requestedTab={rightInspectorRequestedTab}
               />
             )}
@@ -2006,6 +2031,7 @@ export default function App() {
       {/* One-Click Deployment & Custom Domain Modal */}
       <DeployModal
         open={deployModalOpen}
+        initialTab={deployModalTab}
         project={project}
         exportOptions={exportOptions}
         onClose={() => setDeployModalOpen(false)}

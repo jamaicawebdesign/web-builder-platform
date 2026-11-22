@@ -442,6 +442,12 @@ export interface ExportOptions {
   previewNavigationBridge?: boolean;
 }
 
+export interface DomainAliasRecord {
+  domain: string;
+  verified: boolean;
+  verifiedAt?: string | null;
+}
+
 export interface DeployedSiteRecord {
   slug: string;
   projectId?: string | null;
@@ -456,6 +462,7 @@ export interface DeployedSiteRecord {
   customDomain?: string | null;
   domainVerified?: boolean;
   domainVerifiedAt?: string | null;
+  additionalDomains?: DomainAliasRecord[];
 }
 
 export interface DomainDnsInstructions {
@@ -480,6 +487,69 @@ export interface DomainVerificationResult {
     resolvedIps: string[];
     resolvedTxt: string[];
   };
+}
+
+export interface DomainInspectionResult {
+  domain: string;
+  apexDomain: string;
+  detectedRegistrar: string;
+  registrarSlug:
+    | 'cloudflare'
+    | 'godaddy'
+    | 'namecheap'
+    | 'squarespace'
+    | 'route53'
+    | 'porkbun'
+    | 'shopify'
+    | 'other';
+  rdapFound: boolean;
+  transferLocked: boolean | null;
+  rdapStatuses: string[];
+  expiresAt: string | null;
+  registeredAt: string | null;
+  ageDays: number | null;
+  icann60DayEligible: boolean | null;
+  nameservers: string[];
+  mxRecords: string[];
+  currentIps: string[];
+  currentCnames: string[];
+  txtRecords: string[];
+}
+
+export type DomainTransferStatus =
+  | 'initiated'
+  | 'auth_verified'
+  | 'approval_pending'
+  | 'icann_window'
+  | 'completed'
+  | 'cancelled';
+
+export type DomainTransferDnsStrategy = 'keep_dns' | 'managed_dns';
+
+export interface DomainTransferRecord {
+  id: string;
+  domain: string;
+  siteSlug: string;
+  currentRegistrar: string;
+  eppLast4: string;
+  registrantEmail: string;
+  dnsStrategy: DomainTransferDnsStrategy;
+  status: DomainTransferStatus;
+  lockDetected: boolean;
+  mxWarning: boolean;
+  nameservers: string[];
+  mxRecords: string[];
+  registrarChecks: {
+    unlocked: boolean;
+    ageConfirmed: boolean;
+    emailConfirmed: boolean;
+  };
+  estimatedCompletionAt: string;
+  foaApprovedAt?: string | null;
+  completedAt?: string | null;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LeadBookingSlot {

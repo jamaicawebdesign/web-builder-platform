@@ -4,6 +4,24 @@
   "leads": [],
   "events": [
     {
+      "id": "evt_mwr7pim3_lo9yr",
+      "siteSlug": "domain-smoke-1795314178777",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/",
+      "createdAt": "2026-11-22T02:22:59.451Z"
+    },
+    {
+      "id": "evt_mwr7pi6i_9ii6i",
+      "siteSlug": "domain-smoke-1795314178777",
+      "eventType": "page_view",
+      "deviceType": "desktop",
+      "referrer": "Direct",
+      "targetLabel": "/",
+      "createdAt": "2026-11-22T02:22:58.890Z"
+    },
+    {
       "id": "evt_mwoi8xn5_2n5jq",
       "siteSlug": "smoke-test-1795150482996",
       "eventType": "form_submit",

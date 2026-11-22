@@ -37,6 +37,12 @@ export interface DeployedPageRecord {
   blockCount: number;
 }
 
+export interface DomainAliasRecord {
+  domain: string;
+  verified: boolean;
+  verifiedAt?: string | null;
+}
+
 export interface DeploymentRecord {
   slug: string;
   projectId?: string | null;
@@ -50,7 +56,43 @@ export interface DeploymentRecord {
   customDomain?: string | null;
   domainVerified?: boolean;
   domainVerifiedAt?: string | null;
+  additionalDomains?: DomainAliasRecord[];
   deployedAt: string;
+}
+
+export type DomainTransferStatus =
+  | 'initiated'
+  | 'auth_verified'
+  | 'approval_pending'
+  | 'icann_window'
+  | 'completed'
+  | 'cancelled';
+
+export interface DomainTransferDbRecord {
+  id: string;
+  domain: string;
+  siteSlug: string;
+  currentRegistrar: string;
+  eppLast4: string;
+  eppDigest?: string;
+  registrantEmail: string;
+  dnsStrategy: 'keep_dns' | 'managed_dns';
+  status: DomainTransferStatus;
+  lockDetected: boolean;
+  mxWarning: boolean;
+  nameservers: string[];
+  mxRecords: string[];
+  registrarChecks: {
+    unlocked: boolean;
+    ageConfirmed: boolean;
+    emailConfirmed: boolean;
+  };
+  estimatedCompletionAt: string;
+  foaApprovedAt?: string | null;
+  completedAt?: string | null;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LeadBookingSlotRecord {
@@ -125,6 +167,8 @@ interface LocalStoreData {
 
 const PAGES_MANIFEST_FILE = path.join(DATA_DIR, 'pages-manifest.json');
 const AUTOMATIONS_MANIFEST_FILE = path.join(DATA_DIR, 'automations-manifest.json');
+const DOMAINS_MANIFEST_FILE = path.join(DATA_DIR, 'domains-manifest.json');
+const DOMAIN_TRANSFERS_FILE = path.join(DATA_DIR, 'domain-transfers.json');
 
 function readPagesManifest(): Record<string, DeployedPageRecord[]> {
   try {
@@ -162,6 +206,44 @@ function writeAutomationsManifest(manifest: Record<string, Record<string, unknow
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   fs.writeFileSync(AUTOMATIONS_MANIFEST_FILE, JSON.stringify(manifest, null, 2), 'utf8');
+}
+
+function readDomainsManifest(): Record<string, DomainAliasRecord[]> {
+  try {
+    if (fs.existsSync(DOMAINS_MANIFEST_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(DOMAINS_MANIFEST_FILE, 'utf8'));
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return {};
+}
+
+function writeDomainsManifest(manifest: Record<string, DomainAliasRecord[]>) {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  fs.writeFileSync(DOMAINS_MANIFEST_FILE, JSON.stringify(manifest, null, 2), 'utf8');
+}
+
+function readDomainTransfersFile(): DomainTransferDbRecord[] {
+  try {
+    if (fs.existsSync(DOMAIN_TRANSFERS_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(DOMAIN_TRANSFERS_FILE, 'utf8'));
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return [];
+}
+
+function writeDomainTransfersFile(records: DomainTransferDbRecord[]) {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  fs.writeFileSync(DOMAIN_TRANSFERS_FILE, JSON.stringify(records, null, 2), 'utf8');
 }
 
 export async function getDeploymentAutomations(
@@ -367,6 +449,7 @@ export async function listDeployments(): Promise<
   >
 > {
   const manifest = readPagesManifest();
+  const domainsManifest = readDomainsManifest();
   const sb = getSupabaseClient();
   if (sb) {
     const { data, error } = await sb
@@ -394,6 +477,7 @@ export async function listDeployments(): Promise<
         customDomain: d.custom_domain ?? null,
         domainVerified: Boolean(d.domain_verified),
         domainVerifiedAt: d.domain_verified_at ?? null,
+        additionalDomains: Array.isArray(domainsManifest[d.slug]) ? domainsManifest[d.slug] : [],
         deployedAt: d.deployed_at,
         url: `/sites/${d.slug}`,
       };
@@ -420,6 +504,7 @@ export async function listDeployments(): Promise<
         customDomain: d.customDomain ?? null,
         domainVerified: Boolean(d.domainVerified),
         domainVerifiedAt: d.domainVerifiedAt ?? null,
+        additionalDomains: Array.isArray(domainsManifest[d.slug]) ? domainsManifest[d.slug] : [],
         deployedAt: d.deployedAt,
         url: `/sites/${d.slug}`,
       };
@@ -556,6 +641,7 @@ export async function saveDeployment(record: DeploymentRecord): Promise<Deployme
 
 export async function getDeploymentBySlug(slug: string): Promise<DeploymentRecord | null> {
   const manifest = readPagesManifest();
+  const domainsManifest = readDomainsManifest();
   const sb = getSupabaseClient();
   if (sb) {
     const { data, error } = await sb
@@ -577,6 +663,7 @@ export async function getDeploymentBySlug(slug: string): Promise<DeploymentRecor
       customDomain: data.custom_domain ?? null,
       domainVerified: Boolean(data.domain_verified),
       domainVerifiedAt: data.domain_verified_at ?? null,
+      additionalDomains: Array.isArray(domainsManifest[data.slug]) ? domainsManifest[data.slug] : [],
       deployedAt: data.deployed_at,
     };
   }
@@ -587,7 +674,44 @@ export async function getDeploymentBySlug(slug: string): Promise<DeploymentRecor
   return {
     ...rec,
     pages: Array.isArray(rec.pages) && rec.pages.length > 0 ? rec.pages : manifest[slug],
+    additionalDomains: Array.isArray(domainsManifest[slug]) ? domainsManifest[slug] : [],
   };
+}
+
+async function assertDomainAvailable(normalizedDomain: string, currentSlug: string): Promise<void> {
+  const domainsManifest = readDomainsManifest();
+  for (const [slugKey, aliases] of Object.entries(domainsManifest)) {
+    if (slugKey === currentSlug) continue;
+    if (Array.isArray(aliases) && aliases.some((a) => a.domain.toLowerCase() === normalizedDomain)) {
+      throw new Error(`Domain "${normalizedDomain}" is already connected to /sites/${slugKey}.`);
+    }
+  }
+
+  const sb = getSupabaseClient();
+  if (sb) {
+    const { data: conflict } = await sb
+      .from('af_deployments')
+      .select('slug')
+      .ilike('custom_domain', normalizedDomain)
+      .neq('slug', currentSlug)
+      .maybeSingle();
+    if (conflict) {
+      throw new Error(
+        `Domain "${normalizedDomain}" is already connected to /sites/${conflict.slug}.`
+      );
+    }
+    return;
+  }
+
+  const store = readLocalStore();
+  const conflict = Object.values(store.deployments).find(
+    (d) => d.slug !== currentSlug && d.customDomain?.toLowerCase() === normalizedDomain
+  );
+  if (conflict) {
+    throw new Error(
+      `Domain "${normalizedDomain}" is already connected to /sites/${conflict.slug}.`
+    );
+  }
 }
 
 export async function setDeploymentDomain(
@@ -603,22 +727,20 @@ export async function setDeploymentDomain(
   const normalized = customDomain ? customDomain.toLowerCase().trim() : null;
   const domainVerifiedAt = verified ? new Date().toISOString() : null;
 
+  if (normalized) {
+    await assertDomainAvailable(normalized, slug);
+    // Remove from alias list on same site if promoted/set as primary
+    const domainsManifest = readDomainsManifest();
+    if (Array.isArray(domainsManifest[slug])) {
+      domainsManifest[slug] = domainsManifest[slug].filter(
+        (a) => a.domain.toLowerCase() !== normalized
+      );
+      writeDomainsManifest(domainsManifest);
+    }
+  }
+
   const sb = getSupabaseClient();
   if (sb) {
-    if (normalized) {
-      const { data: conflict } = await sb
-        .from('af_deployments')
-        .select('slug')
-        .ilike('custom_domain', normalized)
-        .neq('slug', slug)
-        .maybeSingle();
-      if (conflict) {
-        throw new Error(
-          `Domain "${normalized}" is already connected to /sites/${conflict.slug}.`
-        );
-      }
-    }
-
     const { error } = await sb
       .from('af_deployments')
       .update({
@@ -633,20 +755,13 @@ export async function setDeploymentDomain(
       customDomain: normalized,
       domainVerified: verified,
       domainVerifiedAt,
+      additionalDomains: Array.isArray(readDomainsManifest()[slug])
+        ? readDomainsManifest()[slug]
+        : [],
     };
   }
 
   const store = readLocalStore();
-  if (normalized) {
-    const conflict = Object.values(store.deployments).find(
-      (d) => d.slug !== slug && d.customDomain?.toLowerCase() === normalized
-    );
-    if (conflict) {
-      throw new Error(
-        `Domain "${normalized}" is already connected to /sites/${conflict.slug}.`
-      );
-    }
-  }
   const updated: DeploymentRecord = {
     ...store.deployments[slug],
     customDomain: normalized,
@@ -655,7 +770,140 @@ export async function setDeploymentDomain(
   };
   store.deployments[slug] = updated;
   writeLocalStore(store);
-  return updated;
+  return {
+    ...updated,
+    additionalDomains: Array.isArray(readDomainsManifest()[slug])
+      ? readDomainsManifest()[slug]
+      : [],
+  };
+}
+
+export async function addDeploymentAliasDomain(
+  slug: string,
+  aliasDomain: string,
+  verified = false
+): Promise<DeploymentRecord> {
+  const existing = await getDeploymentBySlug(slug);
+  if (!existing) {
+    throw new Error(`No deployment found at /sites/${slug}. Publish the site first.`);
+  }
+
+  const normalized = aliasDomain.toLowerCase().trim();
+  if (!normalized) {
+    throw new Error('Domain name is required.');
+  }
+
+  // If no primary domain exists yet, set this as primary directly
+  if (!existing.customDomain) {
+    return setDeploymentDomain(slug, normalized, verified);
+  }
+
+  if (existing.customDomain.toLowerCase() === normalized) {
+    return existing;
+  }
+
+  await assertDomainAvailable(normalized, slug);
+
+  const domainsManifest = readDomainsManifest();
+  const currentList = Array.isArray(domainsManifest[slug]) ? domainsManifest[slug] : [];
+  if (!currentList.some((a) => a.domain.toLowerCase() === normalized)) {
+    currentList.push({
+      domain: normalized,
+      verified,
+      verifiedAt: verified ? new Date().toISOString() : null,
+    });
+    domainsManifest[slug] = currentList;
+    writeDomainsManifest(domainsManifest);
+  }
+
+  return {
+    ...existing,
+    additionalDomains: currentList,
+  };
+}
+
+export async function removeDeploymentAliasDomain(
+  slug: string,
+  aliasDomain: string
+): Promise<DeploymentRecord | null> {
+  const existing = await getDeploymentBySlug(slug);
+  if (!existing) return null;
+
+  const normalized = aliasDomain.toLowerCase().trim();
+  const domainsManifest = readDomainsManifest();
+  const currentList = Array.isArray(domainsManifest[slug]) ? domainsManifest[slug] : [];
+  domainsManifest[slug] = currentList.filter((a) => a.domain.toLowerCase() !== normalized);
+  writeDomainsManifest(domainsManifest);
+
+  return {
+    ...existing,
+    additionalDomains: domainsManifest[slug],
+  };
+}
+
+export async function markDeploymentAliasVerified(
+  slug: string,
+  aliasDomain: string,
+  verified: boolean
+): Promise<DeploymentRecord | null> {
+  const existing = await getDeploymentBySlug(slug);
+  if (!existing) return null;
+
+  const normalized = aliasDomain.toLowerCase().trim();
+  const domainsManifest = readDomainsManifest();
+  const currentList = Array.isArray(domainsManifest[slug]) ? domainsManifest[slug] : [];
+  const verifiedAt = verified ? new Date().toISOString() : null;
+  let found = false;
+  const nextList = currentList.map((a) => {
+    if (a.domain.toLowerCase() === normalized) {
+      found = true;
+      return { ...a, verified, verifiedAt };
+    }
+    return a;
+  });
+  if (found) {
+    domainsManifest[slug] = nextList;
+    writeDomainsManifest(domainsManifest);
+  }
+
+  return {
+    ...existing,
+    additionalDomains: nextList,
+  };
+}
+
+export async function promoteAliasToPrimary(
+  slug: string,
+  domain: string
+): Promise<DeploymentRecord> {
+  const existing = await getDeploymentBySlug(slug);
+  if (!existing) {
+    throw new Error(`No deployment found at /sites/${slug}.`);
+  }
+  const normalized = domain.toLowerCase().trim();
+  const prevPrimary = existing.customDomain?.toLowerCase().trim() || null;
+  const prevVerified = Boolean(existing.domainVerified);
+  const prevVerifiedAt = existing.domainVerifiedAt ?? null;
+
+  const domainsManifest = readDomainsManifest();
+  const currentAliases = Array.isArray(domainsManifest[slug]) ? domainsManifest[slug] : [];
+  const targetAlias = currentAliases.find((a) => a.domain.toLowerCase() === normalized);
+  if (!targetAlias) {
+    throw new Error(`Domain "${normalized}" was not found among alias domains for this site.`);
+  }
+
+  const nextAliases = currentAliases.filter((a) => a.domain.toLowerCase() !== normalized);
+  if (prevPrimary && prevPrimary !== normalized) {
+    nextAliases.push({
+      domain: prevPrimary,
+      verified: prevVerified,
+      verifiedAt: prevVerifiedAt,
+    });
+  }
+  domainsManifest[slug] = nextAliases;
+  writeDomainsManifest(domainsManifest);
+
+  return setDeploymentDomain(slug, normalized, Boolean(targetAlias.verified));
 }
 
 export async function markDeploymentDomainVerified(
@@ -687,7 +935,10 @@ export async function markDeploymentDomainVerified(
     domainVerifiedAt,
   };
   writeLocalStore(store);
-  return store.deployments[slug];
+  return {
+    ...store.deployments[slug],
+    additionalDomains: existing.additionalDomains || [],
+  };
 }
 
 export async function getDeploymentByDomain(hostname: string): Promise<DeploymentRecord | null> {
@@ -695,7 +946,24 @@ export async function getDeploymentByDomain(hostname: string): Promise<Deploymen
   if (!clean) return null;
 
   const manifest = readPagesManifest();
+  const domainsManifest = readDomainsManifest();
   const alt = clean.startsWith('www.') ? clean.slice(4) : `www.${clean}`;
+
+  // Check alias domains manifest first across all slugs
+  let aliasMatchedSlug: string | null = null;
+  for (const [slugKey, aliases] of Object.entries(domainsManifest)) {
+    if (!Array.isArray(aliases)) continue;
+    if (
+      aliases.some((a) => {
+        const d = a.domain.toLowerCase();
+        return d === clean || d === alt;
+      })
+    ) {
+      aliasMatchedSlug = slugKey;
+      break;
+    }
+  }
+
   const sb = getSupabaseClient();
   if (sb) {
     const { data, error } = await sb
@@ -703,23 +971,31 @@ export async function getDeploymentByDomain(hostname: string): Promise<Deploymen
       .select('*')
       .or(`custom_domain.ilike.${clean},custom_domain.ilike.${alt}`)
       .limit(2);
-    if (error || !data || data.length === 0) return null;
-    const match =
-      data.find((d) => d.custom_domain?.toLowerCase() === clean) || data[0];
-    return {
-      slug: match.slug,
-      projectId: match.project_id,
-      clientName: match.client_name,
-      name: match.name,
-      description: match.description,
-      html: match.html,
-      pages: manifest[match.slug],
-      blockCount: match.block_count,
-      customDomain: match.custom_domain ?? null,
-      domainVerified: Boolean(match.domain_verified),
-      domainVerifiedAt: match.domain_verified_at ?? null,
-      deployedAt: match.deployed_at,
-    };
+    if (!error && data && data.length > 0) {
+      const match =
+        data.find((d) => d.custom_domain?.toLowerCase() === clean) || data[0];
+      return {
+        slug: match.slug,
+        projectId: match.project_id,
+        clientName: match.client_name,
+        name: match.name,
+        description: match.description,
+        html: match.html,
+        pages: manifest[match.slug],
+        blockCount: match.block_count,
+        customDomain: match.custom_domain ?? null,
+        domainVerified: Boolean(match.domain_verified),
+        domainVerifiedAt: match.domain_verified_at ?? null,
+        additionalDomains: Array.isArray(domainsManifest[match.slug])
+          ? domainsManifest[match.slug]
+          : [],
+        deployedAt: match.deployed_at,
+      };
+    }
+    if (aliasMatchedSlug) {
+      return getDeploymentBySlug(aliasMatchedSlug);
+    }
+    return null;
   }
 
   const store = readLocalStore();
@@ -727,11 +1003,15 @@ export async function getDeploymentByDomain(hostname: string): Promise<Deploymen
   const found =
     list.find((d) => d.customDomain?.toLowerCase() === clean) ||
     list.find((d) => d.customDomain?.toLowerCase() === alt) ||
+    (aliasMatchedSlug ? store.deployments[aliasMatchedSlug] : null) ||
     null;
   if (!found) return null;
   return {
     ...found,
     pages: Array.isArray(found.pages) && found.pages.length > 0 ? found.pages : manifest[found.slug],
+    additionalDomains: Array.isArray(domainsManifest[found.slug])
+      ? domainsManifest[found.slug]
+      : [],
   };
 }
 
@@ -740,6 +1020,11 @@ export async function deleteDeploymentBySlug(slug: string): Promise<boolean> {
   if (manifest[slug]) {
     delete manifest[slug];
     writePagesManifest(manifest);
+  }
+  const domainsManifest = readDomainsManifest();
+  if (domainsManifest[slug]) {
+    delete domainsManifest[slug];
+    writeDomainsManifest(domainsManifest);
   }
 
   const sb = getSupabaseClient();
@@ -1581,5 +1866,93 @@ export async function deleteMarketingOrder(id: string): Promise<boolean> {
   store.marketingOrders = store.marketingOrders.filter((o) => o.id !== id);
   if (store.marketingOrders.length === prevLen) return false;
   writeLocalStore(store);
+  return true;
+}
+
+function sanitizeTransferOutput(rec: DomainTransferDbRecord): Omit<DomainTransferDbRecord, 'eppDigest'> {
+  const { eppDigest: _omitted, ...safe } = rec;
+  return safe;
+}
+
+export async function listDomainTransfers(siteSlug?: string): Promise<Array<Omit<DomainTransferDbRecord, 'eppDigest'>>> {
+  const all = readDomainTransfersFile();
+  const filtered = siteSlug ? all.filter((t) => t.siteSlug === siteSlug) : all;
+  return filtered
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .map(sanitizeTransferOutput);
+}
+
+export async function getDomainTransferById(id: string): Promise<Omit<DomainTransferDbRecord, 'eppDigest'> | null> {
+  const all = readDomainTransfersFile();
+  const found = all.find((t) => t.id === id);
+  return found ? sanitizeTransferOutput(found) : null;
+}
+
+export async function createDomainTransfer(
+  input: Omit<DomainTransferDbRecord, 'createdAt' | 'updatedAt'>
+): Promise<Omit<DomainTransferDbRecord, 'eppDigest'>> {
+  const all = readDomainTransfersFile();
+  const duplicate = all.find(
+    (t) =>
+      t.domain.toLowerCase() === input.domain.toLowerCase() &&
+      t.status !== 'completed' &&
+      t.status !== 'cancelled'
+  );
+  if (duplicate) {
+    throw new Error(`An active transfer for "${input.domain}" is already in progress.`);
+  }
+
+  const now = new Date().toISOString();
+  const full: DomainTransferDbRecord = {
+    ...input,
+    domain: input.domain.toLowerCase().trim(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  all.unshift(full);
+  writeDomainTransfersFile(all.slice(0, 200));
+  return sanitizeTransferOutput(full);
+}
+
+export async function updateDomainTransfer(
+  id: string,
+  patch: Partial<
+    Pick<
+      DomainTransferDbRecord,
+      | 'status'
+      | 'currentRegistrar'
+      | 'eppLast4'
+      | 'eppDigest'
+      | 'registrantEmail'
+      | 'dnsStrategy'
+      | 'lockDetected'
+      | 'mxWarning'
+      | 'nameservers'
+      | 'mxRecords'
+      | 'registrarChecks'
+      | 'foaApprovedAt'
+      | 'completedAt'
+      | 'notes'
+    >
+  >
+): Promise<Omit<DomainTransferDbRecord, 'eppDigest'> | null> {
+  const all = readDomainTransfersFile();
+  const idx = all.findIndex((t) => t.id === id);
+  if (idx < 0) return null;
+  const updated: DomainTransferDbRecord = {
+    ...all[idx],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  all[idx] = updated;
+  writeDomainTransfersFile(all);
+  return sanitizeTransferOutput(updated);
+}
+
+export async function deleteDomainTransfer(id: string): Promise<boolean> {
+  const all = readDomainTransfersFile();
+  const next = all.filter((t) => t.id !== id);
+  if (next.length === all.length) return false;
+  writeDomainTransfersFile(next);
   return true;
 }

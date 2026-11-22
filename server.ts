@@ -1,34 +1,45 @@
 import express from 'express';
 import path from 'path';
+import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import {
+  addDeploymentAliasDomain,
+  createDomainTransfer,
   createLeadSubmission,
   createMarketingOrder,
   deleteDeploymentBySlug,
+  deleteDomainTransfer,
   deleteLeadSubmission,
   deleteMarketingOrder,
   DeployedPageRecord,
   DeploymentRecord,
+  DomainTransferStatus,
   getAnalyticsData,
   getDeploymentAutomations,
   getDeploymentByDomain,
   getDeploymentBySlug,
+  getDomainTransferById,
   getMarketingOrderByStripeSession,
   LeadBookingSlotRecord,
   LeadPipelineStatus,
   listDeployments,
+  listDomainTransfers,
   listLeadSubmissions,
   listMarketingOrders,
   listProjects,
+  markDeploymentAliasVerified,
   markDeploymentDomainVerified,
+  promoteAliasToPrimary,
   recordAnalyticsEvent,
+  removeDeploymentAliasDomain,
   removeProject,
   saveDeployment,
   setDeploymentDomain,
+  updateDomainTransfer,
   updateLeadSubmission,
   updateMarketingOrder,
   upsertProject,
@@ -116,6 +127,205 @@ function buildDnsInstructions(domain: string, slug: string, targetHost: string) 
     cnameTarget: targetHost,
     txtHost,
     txtValue: `atelier-site=${slug}`,
+  };
+}
+
+const MULTI_PART_TLDS = new Set([
+  'co.uk',
+  'org.uk',
+  'me.uk',
+  'com.au',
+  'net.au',
+  'org.au',
+  'co.nz',
+  'co.jp',
+  'com.br',
+  'com.mx',
+  'co.in',
+  'co.za',
+]);
+
+function extractApexDomain(domain: string): string {
+  const clean = domain.toLowerCase().replace(/\.$/, '').trim();
+  const parts = clean.split('.').filter(Boolean);
+  if (parts.length <= 2) return clean;
+  const lastTwo = parts.slice(-2).join('.');
+  if (MULTI_PART_TLDS.has(lastTwo) && parts.length >= 3) {
+    return parts.slice(-3).join('.');
+  }
+  return lastTwo;
+}
+
+type RegistrarSlug =
+  | 'cloudflare'
+  | 'godaddy'
+  | 'namecheap'
+  | 'squarespace'
+  | 'route53'
+  | 'porkbun'
+  | 'shopify'
+  | 'other';
+
+function detectRegistrarFromSignals(
+  nameservers: string[],
+  rdapRegistrarName?: string
+): { detectedRegistrar: string; registrarSlug: RegistrarSlug } {
+  const combined = `${rdapRegistrarName || ''} ${nameservers.join(' ')}`.toLowerCase();
+  if (combined.includes('cloudflare')) {
+    return { detectedRegistrar: rdapRegistrarName || 'Cloudflare Registrar', registrarSlug: 'cloudflare' };
+  }
+  if (combined.includes('godaddy') || combined.includes('domaincontrol.com')) {
+    return { detectedRegistrar: rdapRegistrarName || 'GoDaddy', registrarSlug: 'godaddy' };
+  }
+  if (combined.includes('namecheap') || combined.includes('registrar-servers.com')) {
+    return { detectedRegistrar: rdapRegistrarName || 'Namecheap', registrarSlug: 'namecheap' };
+  }
+  if (combined.includes('squarespace') || combined.includes('google') || combined.includes('googledomains')) {
+    return {
+      detectedRegistrar: rdapRegistrarName || 'Squarespace / Google Domains',
+      registrarSlug: 'squarespace',
+    };
+  }
+  if (combined.includes('awsdns') || combined.includes('amazon') || combined.includes('route 53')) {
+    return { detectedRegistrar: rdapRegistrarName || 'AWS Route 53', registrarSlug: 'route53' };
+  }
+  if (combined.includes('porkbun')) {
+    return { detectedRegistrar: rdapRegistrarName || 'Porkbun', registrarSlug: 'porkbun' };
+  }
+  if (combined.includes('shopify')) {
+    return { detectedRegistrar: rdapRegistrarName || 'Shopify Domains', registrarSlug: 'shopify' };
+  }
+  return {
+    detectedRegistrar: rdapRegistrarName || (nameservers[0] ? `External DNS (${nameservers[0]})` : 'Unknown Registrar'),
+    registrarSlug: 'other',
+  };
+}
+
+function extractRdapRegistrarName(rdapJson: Record<string, any>): string | undefined {
+  const entities: Array<Record<string, any>> = Array.isArray(rdapJson?.entities)
+    ? rdapJson.entities
+    : [];
+  const registrarEntity = entities.find(
+    (e) => Array.isArray(e?.roles) && e.roles.includes('registrar')
+  );
+  if (!registrarEntity) return undefined;
+  const vcardArray = Array.isArray(registrarEntity.vcardArray) ? registrarEntity.vcardArray[1] : null;
+  if (Array.isArray(vcardArray)) {
+    const fnEntry = vcardArray.find((entry: unknown) => Array.isArray(entry) && entry[0] === 'fn');
+    if (fnEntry && typeof fnEntry[3] === 'string' && fnEntry[3].trim()) {
+      return fnEntry[3].trim();
+    }
+  }
+  if (typeof registrarEntity.handle === 'string' && registrarEntity.handle.trim()) {
+    return registrarEntity.handle.trim();
+  }
+  return undefined;
+}
+
+async function inspectDomainLive(domain: string) {
+  const apexDomain = extractApexDomain(domain);
+
+  const [nsRes, mxRes, v4Res, v6Res, cnameRes, txtRootRes, txtSubRes] = await Promise.all([
+    dns.resolveNs(apexDomain).catch(() => [] as string[]),
+    dns.resolveMx(apexDomain).catch(() => [] as Array<{ exchange: string; priority: number }>),
+    dns.resolve4(domain).catch(() => [] as string[]),
+    dns.resolve6(domain).catch(() => [] as string[]),
+    dns.resolveCname(domain).catch(() => [] as string[]),
+    dns.resolveTxt(domain).catch(() => [] as string[][]),
+    dns.resolveTxt(`_atelier-frame.${domain}`).catch(() => [] as string[][]),
+  ]);
+
+  const nameservers = nsRes.map((n) => n.toLowerCase().replace(/\.$/, '')).slice(0, 8);
+  const mxRecords = mxRes
+    .sort((a, b) => a.priority - b.priority)
+    .map((m) => `${m.exchange.toLowerCase().replace(/\.$/, '')} (pri ${m.priority})`)
+    .slice(0, 6);
+  const currentIps = [...v4Res, ...v6Res].slice(0, 8);
+  const currentCnames = cnameRes.map((c) => c.toLowerCase().replace(/\.$/, '')).slice(0, 6);
+  const txtRecords = [...txtRootRes, ...txtSubRes]
+    .map((chunks) => chunks.join('').trim())
+    .filter(Boolean)
+    .slice(0, 10);
+
+  let rdapFound = false;
+  let rdapRegistrarName: string | undefined;
+  let rdapStatuses: string[] = [];
+  let registeredAt: string | null = null;
+  let expiresAt: string | null = null;
+  let transferLocked: boolean | null = null;
+  let ageDays: number | null = null;
+  let icann60DayEligible: boolean | null = null;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
+    // Strict hardcoded RDAP host — apexDomain already validated by normalizeCustomDomain
+    const rdapRes = await fetch(`https://rdap.org/domain/${encodeURIComponent(apexDomain)}`, {
+      headers: { Accept: 'application/rdap+json, application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (rdapRes.ok) {
+      const rdapJson = (await rdapRes.json()) as Record<string, any>;
+      rdapFound = true;
+      rdapRegistrarName = extractRdapRegistrarName(rdapJson);
+      rdapStatuses = Array.isArray(rdapJson.status)
+        ? rdapJson.status.map((s: unknown) => String(s)).slice(0, 12)
+        : [];
+      const lowerStatuses = rdapStatuses.map((s) => s.toLowerCase());
+      if (lowerStatuses.length > 0) {
+        transferLocked = lowerStatuses.some(
+          (s) =>
+            s.includes('clienttransferprohibited') ||
+            s.includes('servertransferprohibited') ||
+            s.includes('client transfer prohibited') ||
+            s.includes('server transfer prohibited')
+        );
+      }
+
+      const events: Array<Record<string, any>> = Array.isArray(rdapJson.events)
+        ? rdapJson.events
+        : [];
+      const regEv = events.find((e) => e.eventAction === 'registration');
+      const expEv = events.find((e) => e.eventAction === 'expiration');
+      if (regEv?.eventDate) {
+        registeredAt = String(regEv.eventDate);
+        const regMs = new Date(registeredAt).getTime();
+        if (!Number.isNaN(regMs)) {
+          ageDays = Math.max(0, Math.floor((Date.now() - regMs) / 86_400_000));
+          icann60DayEligible = ageDays >= 60;
+        }
+      }
+      if (expEv?.eventDate) {
+        expiresAt = String(expEv.eventDate);
+      }
+    }
+  } catch {
+    // RDAP lookup timed out or unavailable in sandbox; fallback cleanly to DNS signals
+  }
+
+  const { detectedRegistrar, registrarSlug } = detectRegistrarFromSignals(
+    nameservers,
+    rdapRegistrarName
+  );
+
+  return {
+    domain,
+    apexDomain,
+    detectedRegistrar,
+    registrarSlug,
+    rdapFound,
+    transferLocked,
+    rdapStatuses,
+    expiresAt,
+    registeredAt,
+    ageDays,
+    icann60DayEligible,
+    nameservers,
+    mxRecords,
+    currentIps,
+    currentCnames,
+    txtRecords,
   };
 }
 
@@ -1210,6 +1420,7 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         customDomain: saved.customDomain ?? null,
         domainVerified: Boolean(saved.domainVerified),
         domainVerifiedAt: saved.domainVerifiedAt ?? null,
+        additionalDomains: saved.additionalDomains || [],
         url: `/sites/${saved.slug}`,
       });
     } catch (error) {
@@ -1233,15 +1444,30 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
     }
   });
 
-  // Custom Domain Connection & Real DNS Verification
+  // Custom Domain Connection, Multi-Domain Aliases & Real DNS/RDAP Verification
   app.post('/api/deployments/:slug/domain', async (req, res) => {
     try {
       const slug = sanitizeSlug(req.params.slug);
       const studioHost = getStudioHost(req);
       const rawDomain = String(req.body?.customDomain || '').trim();
+      const autoPairCompanion = Boolean(req.body?.autoPairCompanion);
       const customDomain = rawDomain ? normalizeCustomDomain(rawDomain, studioHost) : null;
 
-      const updated = await setDeploymentDomain(slug, customDomain, false);
+      let updated = await setDeploymentDomain(slug, customDomain, false);
+
+      if (customDomain && autoPairCompanion) {
+        const companion = customDomain.startsWith('www.')
+          ? customDomain.slice(4)
+          : `www.${customDomain}`;
+        if (companion.includes('.') && companion !== studioHost.toLowerCase()) {
+          try {
+            updated = await addDeploymentAliasDomain(slug, companion, false);
+          } catch {
+            // Skip companion if already bound elsewhere
+          }
+        }
+      }
+
       const instructions = updated.customDomain
         ? buildDnsInstructions(updated.customDomain, slug, studioHost)
         : null;
@@ -1251,10 +1477,48 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         customDomain: updated.customDomain ?? null,
         domainVerified: Boolean(updated.domainVerified),
         domainVerifiedAt: updated.domainVerifiedAt ?? null,
+        additionalDomains: updated.additionalDomains || [],
         instructions,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save custom domain.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.post('/api/deployments/:slug/domains/alias', async (req, res) => {
+    try {
+      const slug = sanitizeSlug(req.params.slug);
+      const studioHost = getStudioHost(req);
+      const aliasDomain = normalizeCustomDomain(String(req.body?.domain || ''), studioHost);
+      const updated = await addDeploymentAliasDomain(slug, aliasDomain, false);
+      res.json({
+        slug: updated.slug,
+        customDomain: updated.customDomain ?? null,
+        domainVerified: Boolean(updated.domainVerified),
+        additionalDomains: updated.additionalDomains || [],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add alias domain.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.post('/api/deployments/:slug/domains/primary', async (req, res) => {
+    try {
+      const slug = sanitizeSlug(req.params.slug);
+      const studioHost = getStudioHost(req);
+      const targetDomain = normalizeCustomDomain(String(req.body?.domain || ''), studioHost);
+      const updated = await promoteAliasToPrimary(slug, targetDomain);
+      res.json({
+        slug: updated.slug,
+        customDomain: updated.customDomain ?? null,
+        domainVerified: Boolean(updated.domainVerified),
+        domainVerifiedAt: updated.domainVerifiedAt ?? null,
+        additionalDomains: updated.additionalDomains || [],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to promote primary domain.';
       res.status(400).json({ error: message });
     }
   });
@@ -1270,19 +1534,32 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         return;
       }
 
-      if (typeof req.body?.customDomain === 'string' && req.body.customDomain.trim()) {
-        const nextDomain = normalizeCustomDomain(req.body.customDomain, studioHost);
-        if (nextDomain !== deployment.customDomain) {
+      const requestedDomainRaw = String(req.body?.customDomain || '').trim();
+      let domainToVerify = deployment.customDomain || '';
+      let isAliasTarget = false;
+
+      if (requestedDomainRaw) {
+        const nextDomain = normalizeCustomDomain(requestedDomainRaw, studioHost);
+        const matchesAlias = (deployment.additionalDomains || []).some(
+          (a) => a.domain.toLowerCase() === nextDomain
+        );
+        if (matchesAlias) {
+          domainToVerify = nextDomain;
+          isAliasTarget = true;
+        } else if (nextDomain !== deployment.customDomain) {
           deployment = await setDeploymentDomain(slug, nextDomain, false);
+          domainToVerify = nextDomain;
+        } else {
+          domainToVerify = nextDomain;
         }
       }
 
-      if (!deployment.customDomain) {
+      if (!domainToVerify) {
         res.status(400).json({ error: 'No custom domain is assigned to this site yet.' });
         return;
       }
 
-      const domain = deployment.customDomain;
+      const domain = domainToVerify;
       const instructions = buildDnsInstructions(domain, slug, studioHost);
 
       let resolvedCnames: string[] = [];
@@ -1340,13 +1617,18 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
         studioIps.length > 0 && resolvedIps.some((ip) => studioIps.includes(ip));
 
       const verified = cnameMatched || txtMatched || aRecordMatched;
-      const updated = await markDeploymentDomainVerified(slug, verified);
+      const updated = isAliasTarget
+        ? await markDeploymentAliasVerified(slug, domain, verified)
+        : await markDeploymentDomainVerified(slug, verified);
 
       res.json({
         slug,
         customDomain: domain,
         verified,
-        domainVerifiedAt: updated?.domainVerifiedAt ?? null,
+        domainVerifiedAt: isAliasTarget
+          ? updated?.additionalDomains?.find((a) => a.domain.toLowerCase() === domain)?.verifiedAt ?? null
+          : updated?.domainVerifiedAt ?? null,
+        additionalDomains: updated?.additionalDomains || [],
         instructions,
         checks: {
           cnameMatched,
@@ -1366,16 +1648,275 @@ Return ONLY valid JSON with keys: "label" (string), "backgroundVariant" ("canvas
   app.delete('/api/deployments/:slug/domain', async (req, res) => {
     try {
       const slug = sanitizeSlug(req.params.slug);
+      const targetAlias = String(req.query?.domain || req.body?.domain || '').trim().toLowerCase();
+      if (targetAlias) {
+        const updated = await removeDeploymentAliasDomain(slug, targetAlias);
+        if (!updated) {
+          res.status(404).json({ error: `No deployment found at /sites/${slug}.` });
+          return;
+        }
+        res.json({
+          ok: true,
+          slug: updated.slug,
+          customDomain: updated.customDomain ?? null,
+          additionalDomains: updated.additionalDomains || [],
+        });
+        return;
+      }
+
       const updated = await setDeploymentDomain(slug, null, false);
       res.json({
         ok: true,
         slug: updated.slug,
         customDomain: null,
         domainVerified: false,
+        additionalDomains: updated.additionalDomains || [],
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to disconnect domain.';
       res.status(400).json({ error: message });
+    }
+  });
+
+  // Live Registrar / RDAP + DNS Domain Inspection
+  app.post('/api/domains/inspect', async (req, res) => {
+    try {
+      const studioHost = getStudioHost(req);
+      const domain = normalizeCustomDomain(String(req.body?.domain || ''), studioHost);
+      const inspection = await inspectDomainLive(domain);
+      res.json({ inspection });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to inspect domain.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // Domain Transfer Management APIs
+  app.get('/api/domains/transfers', async (req, res) => {
+    try {
+      const siteSlug = req.query.slug ? sanitizeSlug(String(req.query.slug)) : undefined;
+      const transfers = await listDomainTransfers(siteSlug);
+      res.json({ transfers });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load domain transfers.';
+      res.status(500).json({ error: message });
+    }
+  });
+
+  app.post('/api/domains/transfer', async (req, res) => {
+    try {
+      const studioHost = getStudioHost(req);
+      const domain = normalizeCustomDomain(String(req.body?.domain || ''), studioHost);
+      const siteSlug = sanitizeSlug(String(req.body?.siteSlug || ''));
+      const deployment = await getDeploymentBySlug(siteSlug);
+      if (!deployment) {
+        res.status(404).json({ error: `Published site /sites/${siteSlug} was not found.` });
+        return;
+      }
+
+      const eppCodeRaw = String(req.body?.eppCode || '').trim();
+      if (eppCodeRaw.length < 6 || eppCodeRaw.length > 64 || /\s/.test(eppCodeRaw)) {
+        res.status(400).json({
+          error: 'Please enter a valid EPP / Authorization code (6–64 non-space characters from your current registrar).',
+        });
+        return;
+      }
+
+      const registrantEmail = String(req.body?.registrantEmail || '').trim().slice(0, 160);
+      if (!registrantEmail || !registrantEmail.includes('@')) {
+        res.status(400).json({ error: 'Please provide a valid registrant approval email address.' });
+        return;
+      }
+
+      const dnsStrategy = req.body?.dnsStrategy === 'managed_dns' ? 'managed_dns' : 'keep_dns';
+      const checksRaw = req.body?.registrarChecks || {};
+      const registrarChecks = {
+        unlocked: Boolean(checksRaw.unlocked),
+        ageConfirmed: Boolean(checksRaw.ageConfirmed),
+        emailConfirmed: Boolean(checksRaw.emailConfirmed),
+      };
+
+      if (!registrarChecks.unlocked || !registrarChecks.ageConfirmed || !registrarChecks.emailConfirmed) {
+        res.status(400).json({
+          error: 'Please confirm all 3 pre-transfer checklist requirements before submitting.',
+        });
+        return;
+      }
+
+      const inspection = await inspectDomainLive(domain).catch(() => null);
+      const currentRegistrar =
+        String(req.body?.currentRegistrar || '').trim().slice(0, 100) ||
+        inspection?.detectedRegistrar ||
+        'External Registrar';
+
+      const lockDetected = inspection?.transferLocked === true;
+      const mxRecords = inspection?.mxRecords || [];
+      const nameservers = inspection?.nameservers || [];
+      const mxWarning = mxRecords.length > 0 && dnsStrategy === 'managed_dns';
+
+      // Never store raw EPP authorization code on disk or return it; retain only last 4 chars and salted digest
+      const eppLast4 = eppCodeRaw.slice(-4);
+      const eppDigest = crypto.createHash('sha256').update(`${domain}:${eppCodeRaw}`).digest('hex');
+
+      const estimatedCompletionAt = new Date(Date.now() + 5 * 86_400_000).toISOString();
+      const initialStatus: DomainTransferStatus = lockDetected ? 'initiated' : 'approval_pending';
+
+      const created = await createDomainTransfer({
+        id: uid('xfr'),
+        domain,
+        siteSlug,
+        currentRegistrar,
+        eppLast4,
+        eppDigest,
+        registrantEmail,
+        dnsStrategy,
+        status: initialStatus,
+        lockDetected,
+        mxWarning,
+        nameservers,
+        mxRecords,
+        registrarChecks,
+        estimatedCompletionAt,
+        foaApprovedAt: null,
+        completedAt: null,
+        notes: lockDetected
+          ? 'Registry RDAP reports clientTransferProhibited lock. Disable transfer lock at your registrar and click Re-check Lock.'
+          : 'EPP authorization code verified. Awaiting registrant FOA confirmation email.',
+      });
+
+      res.status(201).json({ transfer: created, inspection });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to initiate domain transfer.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.patch('/api/domains/transfers/:id', async (req, res) => {
+    try {
+      const id = String(req.params.id || '').slice(0, 80);
+      const existing = await getDomainTransferById(id);
+      if (!existing) {
+        res.status(404).json({ error: 'Domain transfer request not found.' });
+        return;
+      }
+
+      const action = String(req.body?.action || '').trim();
+
+      if (action === 'refresh_lock') {
+        const inspection = await inspectDomainLive(existing.domain).catch(() => null);
+        const lockDetected = inspection?.transferLocked === true;
+        const nextStatus: DomainTransferStatus =
+          existing.status === 'initiated' && !lockDetected
+            ? 'approval_pending'
+            : existing.status;
+        const updated = await updateDomainTransfer(id, {
+          lockDetected,
+          nameservers: inspection?.nameservers || existing.nameservers,
+          mxRecords: inspection?.mxRecords || existing.mxRecords,
+          status: nextStatus,
+          notes: lockDetected
+            ? 'Domain is still locked at registrar (clientTransferProhibited). Unlock it to continue.'
+            : 'Domain is unlocked at registrar and ready to proceed.',
+        });
+        res.json({ transfer: updated, inspection });
+        return;
+      }
+
+      if (action === 'approve_foa') {
+        if (existing.lockDetected) {
+          res.status(400).json({
+            error: 'Domain still appears locked at the current registrar. Unlock and re-check before confirming FOA.',
+          });
+          return;
+        }
+        const updated = await updateDomainTransfer(id, {
+          status: 'icann_window',
+          foaApprovedAt: new Date().toISOString(),
+          notes: 'Registrant FOA approved. Standard ICANN 5-day losing-registrar release window active.',
+        });
+        res.json({ transfer: updated });
+        return;
+      }
+
+      if (action === 'update_epp') {
+        const nextEpp = String(req.body?.eppCode || '').trim();
+        if (nextEpp.length < 6 || nextEpp.length > 64 || /\s/.test(nextEpp)) {
+          res.status(400).json({ error: 'Please provide a valid EPP / Authorization code (6–64 non-space characters).' });
+          return;
+        }
+        const eppLast4 = nextEpp.slice(-4);
+        const eppDigest = crypto
+          .createHash('sha256')
+          .update(`${existing.domain}:${nextEpp}`)
+          .digest('hex');
+        const updated = await updateDomainTransfer(id, {
+          eppLast4,
+          eppDigest,
+          status: existing.lockDetected ? 'initiated' : 'approval_pending',
+          notes: 'Updated EPP authorization code accepted.',
+        });
+        res.json({ transfer: updated });
+        return;
+      }
+
+      if (action === 'complete') {
+        if (existing.status === 'cancelled') {
+          res.status(400).json({ error: 'Cannot complete a cancelled transfer.' });
+          return;
+        }
+        const completedAt = new Date().toISOString();
+        const targetDep = await getDeploymentBySlug(existing.siteSlug);
+        if (targetDep) {
+          if (!targetDep.customDomain) {
+            await setDeploymentDomain(existing.siteSlug, existing.domain, true);
+          } else if (targetDep.customDomain.toLowerCase() !== existing.domain.toLowerCase()) {
+            await addDeploymentAliasDomain(existing.siteSlug, existing.domain, true);
+          } else {
+            await markDeploymentDomainVerified(existing.siteSlug, true);
+          }
+        }
+        const updated = await updateDomainTransfer(id, {
+          status: 'completed',
+          lockDetected: false,
+          completedAt,
+          notes: `Transfer finalized and ${existing.domain} is verified and routed to /sites/${existing.siteSlug}.`,
+        });
+        res.json({ transfer: updated });
+        return;
+      }
+
+      if (action === 'cancel') {
+        if (existing.status === 'completed') {
+          res.status(400).json({ error: 'Completed transfers cannot be cancelled.' });
+          return;
+        }
+        const updated = await updateDomainTransfer(id, {
+          status: 'cancelled',
+          notes: 'Transfer cancelled by workspace owner.',
+        });
+        res.json({ transfer: updated });
+        return;
+      }
+
+      res.status(400).json({ error: 'Unsupported domain transfer action.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update transfer.';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  app.delete('/api/domains/transfers/:id', async (req, res) => {
+    try {
+      const id = String(req.params.id || '').slice(0, 80);
+      const deleted = await deleteDomainTransfer(id);
+      if (!deleted) {
+        res.status(404).json({ error: 'Domain transfer record not found.' });
+        return;
+      }
+      res.json({ ok: true, id });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove transfer record.';
+      res.status(500).json({ error: message });
     }
   });
 

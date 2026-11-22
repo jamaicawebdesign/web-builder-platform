@@ -56,6 +56,7 @@ interface RightInspectorProps {
   onUpdateSeo: (patch: Partial<SiteSeo>) => void;
   onUpdateAutomations?: (patch: Partial<SiteAutomationsConfig>) => void;
   onOpenMarketing?: () => void;
+  onOpenDomains?: () => void;
   requestedTab?: { tab: RightInspectorTab; nonce: number } | null;
 }
 
@@ -408,6 +409,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onUpdateSeo,
   onUpdateAutomations,
   onOpenMarketing,
+  onOpenDomains,
   requestedTab,
 }) => {
   const [activeTab, setActiveTab] = useState<RightInspectorTab>('inspector');
@@ -669,6 +671,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     </button>
                   )}
               </div>
+            )}
+            {onOpenDomains && (
+              <button
+                type="button"
+                onClick={onOpenDomains}
+                className="text-xs font-semibold text-[#1D4ED8] hover:underline cursor-pointer"
+              >
+                Connect DNS or Transfer Domain →
+              </button>
             )}
           </div>
 

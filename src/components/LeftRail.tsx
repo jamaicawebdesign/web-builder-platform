@@ -53,6 +53,7 @@ interface LeftRailProps {
   onLoadTemplate: (template: SiteProject) => void;
   onPreviewTemplate: (template: SiteProject) => void;
   onOpenTemplateGallery: () => void;
+  onOpenDomains?: () => void;
   onCreateBlank: () => void;
   onSaveProjectSnapshot: () => void;
   onDuplicateForClient: () => void;
@@ -125,6 +126,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({
   onLoadTemplate,
   onPreviewTemplate,
   onOpenTemplateGallery,
+  onOpenDomains,
   onCreateBlank,
   onSaveProjectSnapshot,
   onDuplicateForClient,
@@ -688,6 +690,15 @@ export const LeftRail: React.FC<LeftRailProps> = ({
                   placeholder="https://clientdomain.com"
                   className="w-full rounded-lg border border-[#DAD4C6] px-2.5 py-1.5 text-sm text-black placeholder:text-black/60 font-mono bg-white"
                 />
+                {onOpenDomains && (
+                  <button
+                    type="button"
+                    onClick={onOpenDomains}
+                    className="mt-1.5 text-xs font-semibold text-[#1D4ED8] hover:underline cursor-pointer"
+                  >
+                    Connect DNS or Transfer Domain →
+                  </button>
+                )}
               </div>
             </div>
           </div>
